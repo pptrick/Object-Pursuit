@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# xorg
+xorg.log*
+
+# checkpoints
+/Segmentation/checkpoints*
+/Segmentation/*.pth
+/Segmentation/runs
