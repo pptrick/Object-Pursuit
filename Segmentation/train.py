@@ -24,7 +24,7 @@ from model.unet import UNet
 # dir_mask = './data/masks'
 dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/imgs']
 dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/masks']
-dir_checkpoint = 'checkpoints_Mug/'
+dir_checkpoint = 'checkpoints_Mug_resnet18/'
 
 
 def train_net(net,
@@ -138,7 +138,7 @@ def get_args():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-e', '--epochs', metavar='E', type=int, default=25,
                         help='Number of epochs', dest='epochs')
-    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=8,
+    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
     parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0001,
                         help='Learning rate', dest='lr')
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     #   - For N > 2 classes, use n_classes=N
     
     # net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    net = DeepLab(num_classes = 1, backbone = 'resnet', output_stride = 16)
+    net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16)
     
     logging.info(f'Network:\n'
         f'\t{net.n_channels} input channels\n'

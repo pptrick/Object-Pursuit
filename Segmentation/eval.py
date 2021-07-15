@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     # model
     # net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    net = DeepLab(num_classes = 1, backbone = 'resnet', output_stride = 16)
+    net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16)
     print(f'Network:\n'
         f'\t{net.n_channels} input channels\n'
         f'\t{net.n_classes} output channels (classes)\n')

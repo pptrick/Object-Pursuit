@@ -7,8 +7,10 @@ from model.deeplabv3.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 class Decoder(nn.Module):
     def __init__(self, num_classes, backbone, BatchNorm):
         super(Decoder, self).__init__()
-        if backbone == 'resnet' or backbone == 'drn':
+        if backbone == 'resnet' or backbone == 'drn' :
             low_level_inplanes = 256
+        elif backbone == 'resnetsub':
+            low_level_inplanes = 64
         elif backbone == 'xception':
             low_level_inplanes = 128
         elif backbone == 'mobilenet':

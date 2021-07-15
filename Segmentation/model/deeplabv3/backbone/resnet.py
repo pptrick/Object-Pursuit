@@ -1,7 +1,41 @@
 import math
+import numpy as np
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 from model.deeplabv3.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+
+
+class BasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None, BatchNorm=None):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=3, stride=stride, dilation=dilation, padding=dilation, bias=False)
+        self.bn1 = BatchNorm(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, dilation=dilation, padding=dilation, bias=False)
+        self.bn2 = BatchNorm(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+        self.dilation = dilation
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -72,7 +106,15 @@ class ResNet(nn.Module):
         self._init_weight()
 
         if pretrained:
-            self._load_pretrained_model()
+            if self._equals(layers, [2,2,2,2]):
+                self.model = 'resnet_18'
+            elif self._equals(layers, [3,4,6,3]):
+                self.model = 'resnet_50'
+            elif self._equals(layers, [3,4,23,3]):
+                self.model = 'resnet_101'
+            else:
+                self.model = None
+            self._load_pretrained_model(self.model)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1, BatchNorm=None):
         downsample = None
@@ -135,8 +177,15 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _load_pretrained_model(self):
-        pretrain_dict = model_zoo.load_url('https://download.pytorch.org/models/resnet101-5d3b4d8f.pth')
+    def _load_pretrained_model(self, model):
+        url_dict = {
+            'resnet_18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+            'resnet_34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+            'resnet_50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+            'resnet_101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+            'resnet_152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth'
+        }
+        pretrain_dict = model_zoo.load_url(url_dict[model])
         model_dict = {}
         state_dict = self.state_dict()
         for k, v in pretrain_dict.items():
@@ -144,6 +193,12 @@ class ResNet(nn.Module):
                 model_dict[k] = v
         state_dict.update(model_dict)
         self.load_state_dict(state_dict)
+        
+    def _equals(self, a, b):
+        a = np.array(a)
+        b = np.array(b)
+        return (a==b).any()
+        
 
 def ResNet101(output_stride, BatchNorm, pretrained=True):
     """Constructs a ResNet-101 model.
@@ -153,9 +208,25 @@ def ResNet101(output_stride, BatchNorm, pretrained=True):
     model = ResNet(Bottleneck, [3, 4, 23, 3], output_stride, BatchNorm, pretrained=pretrained)
     return model
 
+def ResNet18(output_stride, BatchNorm, pretrained=True):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [2, 2, 2, 2], output_stride, BatchNorm, pretrained=pretrained)
+    return model
+
+def ResNet50(output_stride, BatchNorm, pretrained=True):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(Bottleneck, [3, 4, 6, 3], output_stride, BatchNorm, pretrained=pretrained)
+    return model
+
 if __name__ == "__main__":
     import torch
-    model = ResNet101(BatchNorm=nn.BatchNorm2d, pretrained=True, output_stride=8)
+    model = ResNet18(BatchNorm=nn.BatchNorm2d, pretrained=True, output_stride=8)
     input = torch.rand(1, 3, 512, 512)
     output, low_level_feat = model(input)
     print(output.size())
