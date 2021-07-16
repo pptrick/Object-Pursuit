@@ -110,6 +110,7 @@ if __name__ == '__main__':
         f'\t{net.n_channels} input channels\n'
         f'\t{net.n_classes} output channels (classes)\n')
     print("Total number of paramerters in networks is {}  ".format(sum(x.numel() for x in net.parameters())))
+
     
     # data
     img_dir = os.path.join(args.dir, "imgs")
