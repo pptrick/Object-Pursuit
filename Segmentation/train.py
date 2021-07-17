@@ -22,9 +22,9 @@ from model.unet import UNet
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Pan/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Pan/masks']
-dir_checkpoint = 'checkpoints_Pan_resnet18_pretrained/'
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Pan/imgs', '/data/pancy/iThor/single_obj/data_FloorPlan3_Pan/imgs', '/data/pancy/iThor/single_obj/data_FloorPlan4_Pan/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Pan/masks', '/data/pancy/iThor/single_obj/data_FloorPlan3_Pan/masks', '/data/pancy/iThor/single_obj/data_FloorPlan4_Pan/masks']
+dir_checkpoint = 'checkpoints_Pan_resnet18_freeze_Mul/'
 
 
 def train_net(net,
@@ -57,7 +57,7 @@ def train_net(net,
         Training size:   {n_train}
         Validation size: {n_val}
         Checkpoints:     {save_cp}
-        Device:          {device.type}
+        Device:          {device}
         Images scaling:  {img_scale}
         dir_img:         {dir_img}
         dir_mask:        {dir_mask}
@@ -67,7 +67,7 @@ def train_net(net,
     log_writer.write(info_text)
     log_writer.flush()
 
-    optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
+    optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-8, momentum=0.9)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
     if net.n_classes > 1:
         criterion = nn.CrossEntropyLoss()
@@ -119,12 +119,12 @@ def train_net(net,
 
                     if net.n_classes > 1:
                         logging.info('Validation cross entropy: {}'.format(val_score))
-                        log_writer.write('Validation cross entropy: {}'.format(val_score))
+                        log_writer.write('Validation cross entropy: {}\n'.format(val_score))
                         log_writer.flush()
                         # writer.add_scalar('Loss/test', val_score, global_step)
                     else:
                         logging.info('Validation Dice Coeff: {}'.format(val_score))
-                        log_writer.write('Validation Dice Coeff: {}'.format(val_score))
+                        log_writer.write('Validation Dice Coeff: {}\n'.format(val_score))
                         log_writer.flush()
                         # writer.add_scalar('Dice/test', val_score, global_step)
 
@@ -168,7 +168,7 @@ def get_args():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     args = get_args()
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
     # Change here to adapt to your data
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     #   - For N > 2 classes, use n_classes=N
     
     # net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16)
+    net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
     
     logging.info(f'Network:\n'
         f'\t{net.n_channels} input channels\n'
