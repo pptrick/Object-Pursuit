@@ -138,3 +138,4 @@ xorg.log*
 /Segmentation/checkpoints*
 /Segmentation/*.pth
 /Segmentation/runs
+/Segmentation/Bases

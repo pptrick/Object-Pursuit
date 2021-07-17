@@ -17,13 +17,14 @@ from torch.utils.data import DataLoader, random_split
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
+from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 
 # dir_img = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/imgs/'
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Pan/imgs', '/data/pancy/iThor/single_obj/data_FloorPlan3_Pan/imgs', '/data/pancy/iThor/single_obj/data_FloorPlan4_Pan/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Pan/masks', '/data/pancy/iThor/single_obj/data_FloorPlan3_Pan/masks', '/data/pancy/iThor/single_obj/data_FloorPlan4_Pan/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/masks']
 dir_checkpoint = 'checkpoints_Pan_resnet18_freeze_Mul/'
 
 
@@ -83,6 +84,7 @@ def train_net(net,
             for batch in train_loader:
                 imgs = batch['image']
                 true_masks = batch['mask']
+                
                 assert imgs.shape[1] == net.n_channels, \
                     f'Network has been defined with {net.n_channels} input channels, ' \
                     f'but loaded images have {imgs.shape[1]} channels. Please check that ' \
@@ -112,6 +114,7 @@ def train_net(net,
                         # writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
                         # writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
                     val_score, _ = eval_net(net, val_loader, device)
+                    print("current coeff: ", net.coeffs)
                     val_list.append(val_score)
                     if epoch > 1:
                         scheduler.step(val_score)
@@ -179,7 +182,8 @@ if __name__ == '__main__':
     #   - For N > 2 classes, use n_classes=N
     
     # net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
+    # net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
+    net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases", device)
     
     logging.info(f'Network:\n'
         f'\t{net.n_channels} input channels\n'
