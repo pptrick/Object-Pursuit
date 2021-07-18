@@ -25,7 +25,7 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = './data/masks'
 dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/imgs']
 dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/masks']
-dir_checkpoint = 'checkpoints_Pan_resnet18_freeze_Mul/'
+dir_checkpoint = 'checkpoints_test/'
 
 
 def train_net(net,
@@ -34,7 +34,7 @@ def train_net(net,
               batch_size=1,
               lr=0.001,
               val_percent=0.1,
-              save_cp=True,
+              save_cp=False,
               img_scale=0.5):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
@@ -114,7 +114,7 @@ def train_net(net,
                         # writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
                         # writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
                     val_score, _ = eval_net(net, val_loader, device)
-                    print("current coeff: ", net.coeffs)
+                    print("\ncurrent coeff: ", net.coeffs)
                     val_list.append(val_score)
                     if epoch > 1:
                         scheduler.step(val_score)
@@ -156,7 +156,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0001,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.002,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')

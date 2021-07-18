@@ -1,10 +1,12 @@
 import os
-import re
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import collections
-from model.deeplabv3.deeplab import *
+from model.coeffnet.deeplab_block.aspp import *
+from model.coeffnet.deeplab_block.decoder import *
+from model.deeplabv3 import backbone
 
 class Coeffnet_Deeplab(nn.Module):
     n_channels = 3
@@ -17,12 +19,18 @@ class Coeffnet_Deeplab(nn.Module):
         self.base_num, self.aspp_bases, self.decoder_bases = self._parse_base_files(base_dir, device)
         print("The number of base: ", self.base_num)
         
-        # self.coeffs = nn.ParameterList([nn.Parameter(torch.randn(1)) for i in range(self.base_num)])
+        # build coeffs
+        self.init_value = 1.0/math.sqrt(self.base_num)
         self.coeffs = nn.Parameter(torch.randn(self.base_num))
-        self.target_net = DeepLab(num_classes=self.n_classes, backbone='resnetsub', output_stride=16, freeze_backbone=True)
-        # freeze target net param
-        # for param in self.target_net.parameters():
-        #     param.requires_grad = False
+        torch.nn.init.constant_(self.coeffs, self.init_value)
+        print("init coeff: ", self.coeffs)
+        
+        # build backbone
+        self.backbone = backbone.build_backbone('resnetsub', 16, nn.BatchNorm2d)
+        # freeze backbone
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        
         
     def _parse_base_files(self, base_dir, device):
         base_files = [os.path.join(base_dir, file) for file in os.listdir(base_dir) if file.endswith(".pth")]
@@ -36,19 +44,17 @@ class Coeffnet_Deeplab(nn.Module):
                 if param.startswith("backbone"):
                     pass
                 elif param.startswith("aspp"):
-                    param_sub = re.match(r'aspp\.(.+)', param).group(1)
-                    if param_sub not in aspp_weights:
-                        aspp_weights[param_sub] = [state_dict[param]]
+                    if param not in aspp_weights:
+                        aspp_weights[param] = [state_dict[param]]
                     else:
-                        assert(state_dict[param].size() == aspp_weights[param_sub][0].size())
-                        aspp_weights[param_sub].append(state_dict[param])
+                        assert(state_dict[param].size() == aspp_weights[param][0].size())
+                        aspp_weights[param].append(state_dict[param])
                 elif param.startswith("decoder"):
-                    param_sub = re.match(r'decoder\.(.+)', param).group(1)
-                    if param_sub not in decoder_weights:
-                        decoder_weights[param_sub] = [state_dict[param]]
+                    if param not in decoder_weights:
+                        decoder_weights[param] = [state_dict[param]]
                     else:
-                        assert(state_dict[param].size() == decoder_weights[param_sub][0].size())
-                        decoder_weights[param_sub].append(state_dict[param])
+                        assert(state_dict[param].size() == decoder_weights[param][0].size())
+                        decoder_weights[param].append(state_dict[param])
                 else:
                     print(f"[Warning] find illegal network parameter: {param}")
         return base_num, aspp_weights, decoder_weights
@@ -63,13 +69,20 @@ class Coeffnet_Deeplab(nn.Module):
         return aspp_weights, decoder_weights
     
     def forward(self, input):
-        # set network parameters:
+        # update network parameters:
         new_aspp, new_decoder = self._update_weights()
-        self.target_net.aspp.load_state_dict(new_aspp)
-        self.target_net.decoder.load_state_dict(new_decoder)
         
-        # forward
-        return self.target_net(input)
+        # backbone forward
+        x, low_level_feat = self.backbone(input)
+        
+        # aspp forward
+        x = ASPP("aspp", x, new_aspp, output_stride=16)
+        
+        # decoder forward
+        x = Decoder("decoder", x, low_level_feat, new_decoder)
+        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
+        
+        return x
         
         
         
