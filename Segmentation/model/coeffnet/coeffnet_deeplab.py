@@ -23,7 +23,10 @@ class Coeffnet_Deeplab(nn.Module):
         self.init_value = 1.0/math.sqrt(self.base_num)
         self.coeffs = nn.Parameter(torch.randn(self.base_num))
         torch.nn.init.constant_(self.coeffs, self.init_value)
-        print("init coeff: ", self.coeffs)
+        print("init coeff-", self.coeffs)
+        
+        # combine function
+        self.combine_func = self._linear
         
         # build backbone
         self.backbone = backbone.build_backbone('resnetsub', 16, nn.BatchNorm2d)
@@ -59,13 +62,24 @@ class Coeffnet_Deeplab(nn.Module):
                     print(f"[Warning] find illegal network parameter: {param}")
         return base_num, aspp_weights, decoder_weights
     
+    def _linear(self, bases, coeffs):
+        assert len(bases) == len(coeffs)
+        n = len(bases)
+        if n > 0:
+            res = bases[0] * coeffs[0]
+            for i in range(1, n):
+                res += bases[i] * coeffs[i]
+            return res
+        else:
+            raise ValueError
+    
     def _update_weights(self):
         aspp_weights = collections.OrderedDict()
         decoder_weights = collections.OrderedDict()
         for param in self.aspp_bases:
-            aspp_weights[param] = self.aspp_bases[param][0] * self.coeffs[0] + self.aspp_bases[param][1] * self.coeffs[1]
+            aspp_weights[param] = self.combine_func(self.aspp_bases[param], self.coeffs)
         for param in self.decoder_bases:
-            decoder_weights[param] = self.decoder_bases[param][0] * self.coeffs[0] + self.decoder_bases[param][1] * self.coeffs[1]
+            decoder_weights[param] = self.combine_func(self.decoder_bases[param], self.coeffs)
         return aspp_weights, decoder_weights
     
     def forward(self, input):

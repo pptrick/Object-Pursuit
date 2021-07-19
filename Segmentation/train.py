@@ -23,9 +23,9 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Mug/masks']
-dir_checkpoint = 'checkpoints_test/'
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Plate/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Plate/masks']
+dir_checkpoint = 'checkpoints_coeff_test/'
 
 
 def train_net(net,
@@ -38,14 +38,12 @@ def train_net(net,
               img_scale=0.5):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
-    # dataset = DepthDataset(dir_img, dir_mask)
     n_val = int(len(dataset) * val_percent)
     n_train = len(dataset) - n_val
     train, val = random_split(dataset, [n_train, n_val])
     train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
     val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
 
-    # writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}')
     if not os.path.exists(dir_checkpoint):
         os.mkdir(dir_checkpoint)
     log_writer = open(os.path.join(dir_checkpoint, "log.txt"), "w")
@@ -62,7 +60,7 @@ def train_net(net,
         Images scaling:  {img_scale}
         dir_img:         {dir_img}
         dir_mask:        {dir_mask}
-        parameter number of the network: {sum(x.numel() for x in net.parameters())}
+        parameter number of the network: {sum(x.numel() for x in net.parameters() if x.requires_grad)}
     '''
     logging.info(info_text)
     log_writer.write(info_text)
@@ -111,30 +109,23 @@ def train_net(net,
                 if global_step % (n_train // (10 * batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
-                        # writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
-                        # writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
                     val_score, _ = eval_net(net, val_loader, device)
-                    print("\ncurrent coeff: ", net.coeffs)
                     val_list.append(val_score)
                     if epoch > 1:
                         scheduler.step(val_score)
-                    # writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
 
                     if net.n_classes > 1:
                         logging.info('Validation cross entropy: {}'.format(val_score))
                         log_writer.write('Validation cross entropy: {}\n'.format(val_score))
                         log_writer.flush()
-                        # writer.add_scalar('Loss/test', val_score, global_step)
                     else:
+                        try:
+                            print("\n current coeffs: ", net.coeffs)
+                        except Exception:
+                            pass
                         logging.info('Validation Dice Coeff: {}'.format(val_score))
                         log_writer.write('Validation Dice Coeff: {}\n'.format(val_score))
                         log_writer.flush()
-                        # writer.add_scalar('Dice/test', val_score, global_step)
-
-                    # writer.add_images('images', imgs, global_step)
-                    # if net.n_classes == 1:
-                    #     writer.add_images('masks/true', true_masks, global_step)
-                    #     writer.add_images('masks/pred', torch.sigmoid(masks_pred) > 0.5, global_step)
 
         if save_cp:
             try:
@@ -145,7 +136,6 @@ def train_net(net,
                        dir_checkpoint + f'CP_epoch{epoch + 1}_val_{sum(val_list)/len(val_list)}.pth')
             logging.info(f'Checkpoint {epoch + 1} saved !')
 
-    # writer.close()
     log_writer.close()
 
 
@@ -171,7 +161,7 @@ def get_args():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     args = get_args()
-    device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
     # Change here to adapt to your data
