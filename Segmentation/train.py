@@ -48,6 +48,8 @@ def train_net(net,
         os.mkdir(dir_checkpoint)
     log_writer = open(os.path.join(dir_checkpoint, "log.txt"), "w")
     global_step = 0
+    
+    # coeff_output = open("coeff.txt", "w") # coeff recorder
 
     info_text = f'''Starting training:
         Epochs:          {epochs}
@@ -93,9 +95,10 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
+                # coeff_output.write(str(net.coeffs.clone().detach().cpu().numpy().tolist())+"\n")
+                # coeff_output.flush()
                 loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
-                # writer.add_scalar('Loss/train', loss.item(), global_step)
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
@@ -186,8 +189,6 @@ if __name__ == '__main__':
         logging.info(f'Model loaded from {args.load}')
 
     net.to(device=device)
-    # faster convolutions, but more memory
-    # cudnn.benchmark = True
 
     try:
         train_net(net=net,

@@ -1,4 +1,5 @@
 import os
+import re
 import math
 import torch
 import torch.nn as nn
@@ -60,7 +61,42 @@ class Coeffnet_Deeplab(nn.Module):
                         decoder_weights[param].append(state_dict[param])
                 else:
                     print(f"[Warning] find illegal network parameter: {param}")
+        
+        self._trans_bn(aspp_weights, base_num)
+        self._trans_bn(decoder_weights, base_num)
         return base_num, aspp_weights, decoder_weights
+    
+    
+    def _trans_bn(self, param_dict, base_num, epsilon=1e-05):
+        """translate bn(batch norm) weights to linear weights
+
+        Args:
+            param_dict (dict): network parameter dict
+        """
+        # get bn names
+        bn_names = set()
+        for param in param_dict:
+            try:
+                # here we use running_mean to judge whether it is batchnorm, but there are other operations has this attribute too
+                bn_name = re.match(r'(.+)\.running\_mean', param).group(1)
+                assert((bn_name+".weight") in param_dict)
+                assert((bn_name+".bias") in param_dict)
+                assert((bn_name+".running_var") in param_dict)
+                bn_names.add(bn_name)
+            except Exception:
+                pass
+        
+        for bn in bn_names:
+            param_dict[bn+".weight_prime"] = []
+            param_dict[bn+".bias_prime"] = []
+            for i in range(base_num):
+                shape = param_dict[bn + ".weight"][i].size()
+                var = torch.div(torch.ones(shape).to(self.device), (param_dict[bn + ".running_var"][i]+torch.ones(shape).to(self.device)*epsilon).sqrt())
+                weight_var = torch.mul(param_dict[bn + ".weight"][i], var)
+                param_dict[bn+".weight_prime"].append(weight_var)
+                param_dict[bn+".bias_prime"].append(param_dict[bn + ".bias"][i]-torch.mul(param_dict[bn + ".running_mean"][i], weight_var))
+        
+    
     
     def _linear(self, bases, coeffs):
         assert len(bases) == len(coeffs)

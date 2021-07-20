@@ -22,7 +22,7 @@ class SingleObjEnv:
             scene=self.scene,
             
             # step sizes
-            gridSize=0.4,
+            gridSize=0.5,
             snapToGrid=True,
             rotateStepDegrees=6,
             
@@ -126,6 +126,6 @@ class SingleObjEnv:
         
     
 if __name__ == "__main__":
-    env = SingleObjEnv(objectType="Mug", scene=f"FloorPlan4", change_pos_times=240, out_dir=f"/data/pancy/iThor/single_obj/data_FloorPlan4_Mug", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
+    env = SingleObjEnv(objectType="Cup", scene=f"FloorPlan4", change_pos_times=160, out_dir=f"/data/pancy/iThor/single_obj/data_FloorPlan4_Cup", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     env.genData()
     
