@@ -14,6 +14,7 @@ from utils.dataset import BasicDataset
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
+from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 
 
 def predict_img(net,
@@ -26,15 +27,16 @@ def predict_img(net,
     img = torch.from_numpy(BasicDataset.preprocess(full_img, scale_factor))
 
     img = img.unsqueeze(0)
+    img = torch.cat([img, img], dim=0)
     img = img.to(device=device, dtype=torch.float32)
 
     with torch.no_grad():
         output = net(img)
 
         if net.n_classes > 1:
-            probs = F.softmax(output, dim=1)
+            probs = F.softmax(output[0], dim=1)
         else:
-            probs = torch.sigmoid(output)
+            probs = torch.sigmoid(output[0])
 
         probs = probs.squeeze(0)
 
@@ -113,13 +115,15 @@ if __name__ == "__main__":
     args = get_args()
     in_files = parse_input(args.input)
     out_files = get_output_filenames(args, in_files)
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    net = UNet(n_channels=3, n_classes=1)
+    # net = UNet(n_channels=3, n_classes=1)
     # net = DeepLab(num_classes = 1, backbone = 'resnet', output_stride = 16)
+    net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases", device)
 
     logging.info("Loading model {}".format(args.model))
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
     net.to(device=device)
     net.load_state_dict(torch.load(args.model, map_location=device))

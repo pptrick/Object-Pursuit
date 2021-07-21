@@ -31,6 +31,9 @@ class Coeffnet_Deeplab(nn.Module):
         
         # build backbone
         self.backbone = backbone.build_backbone('resnetsub', 16, nn.BatchNorm2d)
+        self.backbone.load_state_dict(
+            torch.load("./pretrained/backbone.pth", map_location=device)
+        )
         # freeze backbone
         for param in self.backbone.parameters():
             param.requires_grad = False
@@ -38,6 +41,7 @@ class Coeffnet_Deeplab(nn.Module):
         
     def _parse_base_files(self, base_dir, device):
         base_files = [os.path.join(base_dir, file) for file in os.listdir(base_dir) if file.endswith(".pth")]
+        print("base files: ", base_files)
         base_num = len(base_files)
         aspp_weights = collections.OrderedDict()
         decoder_weights = collections.OrderedDict()

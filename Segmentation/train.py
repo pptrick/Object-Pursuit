@@ -23,8 +23,8 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Plate/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan1_Plate/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/masks']
 dir_checkpoint = 'checkpoints_coeff_test/'
 
 
@@ -38,9 +38,11 @@ def train_net(net,
               img_scale=0.5):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
+    train_percent = 0.1
     n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train, val = random_split(dataset, [n_train, n_val])
+    n_train = int(len(dataset) * train_percent)
+    n_test = len(dataset) - n_train - n_val
+    train, val, _ = random_split(dataset, [n_train, n_val, n_test])
     train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
     val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
 
@@ -109,7 +111,7 @@ def train_net(net,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
-                if global_step % (n_train // (10 * batch_size)) == 0:
+                if global_step % (n_train // (batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
                     val_score, _ = eval_net(net, val_loader, device)
@@ -149,7 +151,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.002,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0002,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')

@@ -14,6 +14,7 @@ from utils.dice_loss import dice_coeff
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
+from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 
 
 def eval_net(net, loader, device):
@@ -46,6 +47,7 @@ def eval_net(net, loader, device):
             pbar.update()
 
     net.train()
+    
     return tot / n_val, records
 
 def _get_args():
@@ -105,7 +107,9 @@ if __name__ == '__main__':
 
     # model
     # net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16)
+    # net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
+    net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases", device)
+    
     print(f'Network:\n'
         f'\t{net.n_channels} input channels\n'
         f'\t{net.n_classes} output channels (classes)\n')
@@ -116,7 +120,7 @@ if __name__ == '__main__':
     img_dir = os.path.join(args.dir, "imgs")
     mask_dir = os.path.join(args.dir, "masks")
     eval_dataset = BasicDataset(img_dir, mask_dir, args.scale)
-    # eval_dataset = DepthDataset(img_dir, mask_dir)
+
     n_size = len(eval_dataset)
     indices = [i for i in range(n_size)]
     random.shuffle(indices)
@@ -124,27 +128,32 @@ if __name__ == '__main__':
         eval_sampler = sampler.SubsetRandomSampler(indices[:min(n_size, args.data_size)])
     else:
         eval_sampler = sampler.SubsetRandomSampler(indices[:n_size])
-    eval_loader = DataLoader(eval_dataset, batch_size=1, shuffle=False, num_workers=8, pin_memory=True, drop_last=True, sampler=eval_sampler)
+    eval_loader = DataLoader(eval_dataset, batch_size=2, shuffle=False, num_workers=8, pin_memory=True, drop_last=True, sampler=eval_sampler)
     print("[Info] testing data size: ", len(eval_loader))
 
     try:
-        results = []
-        model_checkpoints = parse_load(args.load)
-        for cp in model_checkpoints:
-            net.load_state_dict(
-                torch.load(cp, map_location=device)
-            )
-            print(f'Model loaded from {cp}')
+        if not args.load:
             net.to(device=device)
             res, records = eval_net(net, eval_loader, device)
-            if args.record is not None:
-                save_record(records, args.record)
             print("average dice coeff: ", res)
-            results.append(res)
-        if len(results) > 0:
-            print("==================================")
-            print("max test dice coeff: ", max(results))
-            print("all results: ", results)
+        else:
+            results = []
+            model_checkpoints = parse_load(args.load)
+            for cp in model_checkpoints:
+                net.load_state_dict(
+                    torch.load(cp, map_location=device)
+                )
+                print(f'Model loaded from {cp}')
+                net.to(device=device)
+                res, records = eval_net(net, eval_loader, device)
+                if args.record is not None:
+                    save_record(records, args.record)
+                print("average dice coeff: ", res)
+                results.append(res)
+            if len(results) > 0:
+                print("==================================")
+                print("max test dice coeff: ", max(results))
+                print("all results: ", results)
     except KeyboardInterrupt:
         try:
             sys.exit(0)
