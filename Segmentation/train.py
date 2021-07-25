@@ -23,8 +23,8 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Egg/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Egg/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/masks']
 dir_checkpoint = 'checkpoints_coeff_test/'
 
 
@@ -34,7 +34,7 @@ def train_net(net,
               batch_size=1,
               lr=0.001,
               val_percent=0.1,
-              save_cp=True,
+              save_cp=False,
               img_scale=0.5):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
@@ -186,11 +186,11 @@ if __name__ == '__main__':
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
     
-    if args.model is "unet":
+    if args.model == "unet":
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    elif args.model is "deeplab":
+    elif args.model == "deeplab":
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
-    elif args.model is "coefflab":
+    elif args.model == "coeffnet":
         net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device)
     else:
         raise NotImplementedError
