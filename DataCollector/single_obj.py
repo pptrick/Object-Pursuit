@@ -8,7 +8,7 @@ import random
 # from supervisor import Supervisor_loop
 
 class SingleObjEnv:
-    def __init__(self, objectType, scene="FloorPlan1", out_dir="./data", change_pos_times=120, width=572, height=572, local_executable_path = None):
+    def __init__(self, objectType, scene="FloorPlan1", out_dir="./data", change_pos_times=120, remove_other_object=True, width=572, height=572, local_executable_path = None):
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         self.outdir = out_dir
@@ -16,6 +16,7 @@ class SingleObjEnv:
         self.mainobjType = objectType
         self.scene = scene
         self.x_display = "0"
+        self.remove_other_object = remove_other_object
         self.controller = Controller(
             agentMode="default",
             visibilityDistance=1.2,
@@ -24,7 +25,7 @@ class SingleObjEnv:
             # step sizes
             gridSize=0.5,
             snapToGrid=True,
-            rotateStepDegrees=6,
+            rotateStepDegrees=0.1,
             
             # image modalities
             renderDepthImage=True,
@@ -52,11 +53,11 @@ class SingleObjEnv:
         mainobj_exist = False
         for obj in obj_status:
             if (obj["pickupable"] or obj["moveable"]) and obj["objectType"] != self.mainobjType:
-                # self.controller.step(
-                #     action="RemoveFromScene",
-                #     objectId=obj["objectId"]
-                # )
-                pass # make cluttered environment, include other object
+                if self.remove_other_object:
+                    self.controller.step(
+                        action="RemoveFromScene",
+                        objectId=obj["objectId"]
+                    )
             elif obj["objectType"] == self.mainobjType:
                 mainobj_exist = True
         if not mainobj_exist:
@@ -68,11 +69,12 @@ class SingleObjEnv:
             )
             print(f"[INFO] current info: obj-type {self.mainobjType}, obj-name {self.mainobjName}, obj-id {self.mainObjId}")
             
-    def _collectData(self, seed):
+    def _collectData(self, seed, horizons):
         try:
-            horizons = [-30, 0, 30, 60]
-            horizon_offset = random.randint(0, 29)
-            horizons = [h+horizon_offset for h in horizons if h+horizon_offset <= 60]
+            if horizons is None:
+                horizons = [-30, 0, 30, 60]
+                horizon_offset = random.randint(0, 29)
+                horizons = [h+horizon_offset for h in horizons if h+horizon_offset <= 60]
             self._init_status(seed)
             event = self.controller.step(
                 action="GetInteractablePoses",
@@ -89,7 +91,7 @@ class SingleObjEnv:
                 frame = state.frame
                 depth_frame = state.depth_frame
                 mask = state.instance_masks[self.mainObjId]
-                name = f"{self.scene}_seed_{str(seed)}_num_{str(num)}"
+                name = f"{self.scene}_seed_{'%04d' % seed}_num_{'%06d' % num}"
                 self._saveImg(name, state.cv2img, depth_frame, mask)
                 # self.npz_data[name] = {"frame": frame, "depth": depth_frame, "mask": mask}
                 num += 1
@@ -118,14 +120,15 @@ class SingleObjEnv:
         npz_dict = {"frame": frame, "depth": depth_frame, "mask": mask}
         np.savez(os.path.join(dir, name+".npz"), **npz_dict)
         
-    def genData(self):
+    def genData(self, horizons=None):
         print("[INFO] start to generate data")
-        for i in range(self.change_pos_times):
-            self._collectData(i)
+        for i in range(17, self.change_pos_times):
+            self._collectData(i, horizons)
             # np.savez(os.path.join(self.outdir, f"ithor_single_{self.scene}.npz"), **self.npz_data)
         
     
 if __name__ == "__main__":
-    env = SingleObjEnv(objectType="Cup", scene=f"FloorPlan4", change_pos_times=160, out_dir=f"/data/pancy/iThor/single_obj/data_FloorPlan4_Cup", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
+    env = SingleObjEnv(objectType="Egg", scene=f"FloorPlan2", change_pos_times=200, out_dir=f"./data/",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
+    # env = SingleObjEnv(objectType="SaltShaker", scene=f"FloorPlan2", change_pos_times=200, out_dir=f"./data_FloorPlan4_Cup", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     env.genData()
     

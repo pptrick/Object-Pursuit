@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
+from tqdm import tqdm
 
 from utils.data_vis import plot_img_and_mask
 from utils.dataset import BasicDataset
@@ -62,7 +63,6 @@ def get_args():
                         help="Specify the file in which the model is stored")
     parser.add_argument('--input', '-i', metavar='INPUT', nargs='+',
                         help='filenames of input images', required=True)
-
     parser.add_argument('--output', '-o', metavar='INPUT', nargs='+',
                         help='Filenames of ouput images')
     parser.add_argument('--viz', '-v', action='store_true',
@@ -100,6 +100,18 @@ def get_output_filenames(args, in_files):
 def mask_to_image(mask):
     return Image.fromarray((mask * 255).astype(np.uint8))
 
+def mask_on_img(img, mask, alpha=0.8):
+    """overlap mask on img
+
+    Args:
+        img (PIL Image): input target rgb image, H*W*C
+        mask (bool array): predict mask of img, H*W
+        alpha (float, optional): transparent value of the mask. Defaults to 0.8.
+    """
+    res = np.array(img.copy())
+    res[:, :, 2] = mask[:,:]*alpha*255 + (1-mask[:,:]*alpha)*res[:,:,2]
+    return res
+
 def parse_input(in_files):
     file_list = []
     for f in in_files:
@@ -130,7 +142,7 @@ if __name__ == "__main__":
 
     logging.info("Model loaded !")
 
-    for i, fn in enumerate(in_files):
+    for i, fn in enumerate(tqdm(in_files)):
         logging.info("\nPredicting image {} ...".format(fn))
 
         img = Image.open(fn)
@@ -140,11 +152,13 @@ if __name__ == "__main__":
                            scale_factor=args.scale,
                            out_threshold=args.mask_threshold,
                            device=device)
-
+        
         if not args.no_save:
-            out_fn = out_files[i]
-            result = mask_to_image(mask)
-            result.save(out_files[i])
+            # out_fn = out_files[i]
+            # result = mask_to_image(mask)
+            # result.save(out_files[i])
+            res = mask_on_img(img, mask)
+            Image.fromarray(res).save(out_files[i])
 
             logging.info("Mask saved to {}".format(out_files[i]))
 

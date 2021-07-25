@@ -23,8 +23,8 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Egg/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Egg/masks']
 dir_checkpoint = 'checkpoints_coeff_test/'
 
 
@@ -34,11 +34,11 @@ def train_net(net,
               batch_size=1,
               lr=0.001,
               val_percent=0.1,
-              save_cp=False,
+              save_cp=True,
               img_scale=0.5):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
-    train_percent = 0.1
+    train_percent = 0.9
     n_val = int(len(dataset) * val_percent)
     n_train = int(len(dataset) * train_percent)
     n_test = len(dataset) - n_train - n_val
@@ -76,6 +76,8 @@ def train_net(net,
         criterion = nn.CrossEntropyLoss()
     else:
         criterion = nn.BCEWithLogitsLoss()
+        
+    max_valid_acc = 0
 
     for epoch in range(epochs):
         net.train()
@@ -111,7 +113,7 @@ def train_net(net,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
-                if global_step % (n_train // (batch_size)) == 0:
+                if global_step % (n_train // (10*batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
                     val_score, _ = eval_net(net, val_loader, device)
@@ -137,9 +139,12 @@ def train_net(net,
                 logging.info('Created checkpoint directory')
             except OSError:
                 pass
-            torch.save(net.state_dict(),
-                       dir_checkpoint + f'CP_epoch{epoch + 1}_val_{sum(val_list)/len(val_list)}.pth')
-            logging.info(f'Checkpoint {epoch + 1} saved !')
+            avg_valid_acc = sum(val_list)/len(val_list)
+            if avg_valid_acc > max_valid_acc:
+                torch.save(net.state_dict(),
+                        dir_checkpoint + f'CP_epoch{epoch + 1}_val_{avg_valid_acc}.pth')
+                max_valid_acc = avg_valid_acc
+                logging.info(f'Checkpoint {epoch + 1} saved !')
 
     log_writer.close()
 
@@ -151,7 +156,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0002,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0004,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')
@@ -159,6 +164,11 @@ def get_args():
                         help='Downscaling factor of the images')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
+    parser.add_argument('--cuda', dest='cuda', type=int, default=0,
+                        help='cuda device number')
+    parser.add_argument('--model', type=str, default='coeffnet',
+                        choices=['coeffnet', 'deeplab', 'unet'],
+                        help='model name')
 
     return parser.parse_args()
 
@@ -166,7 +176,7 @@ def get_args():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     args = get_args()
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:'+str(args.cuda) if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
     # Change here to adapt to your data
@@ -176,9 +186,14 @@ if __name__ == '__main__':
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
     
-    # net = UNet(n_channels=3, n_classes=1, bilinear=True)
-    # net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
-    net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases", device)
+    if args.model is "unet":
+        net = UNet(n_channels=3, n_classes=1, bilinear=True)
+    elif args.model is "deeplab":
+        net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
+    elif args.model is "coefflab":
+        net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device)
+    else:
+        raise NotImplementedError
     
     logging.info(f'Network:\n'
         f'\t{net.n_channels} input channels\n'
