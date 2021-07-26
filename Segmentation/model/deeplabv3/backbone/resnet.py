@@ -178,6 +178,7 @@ class ResNet(nn.Module):
                 m.bias.data.zero_()
 
     def _load_pretrained_model(self, model):
+        print("load pretrained model: ", model)
         url_dict = {
             'resnet_18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
             'resnet_34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',

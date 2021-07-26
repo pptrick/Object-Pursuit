@@ -39,11 +39,12 @@ def train_net(net,
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
     train_percent = 0.9
+    val_percent = 0.1
     n_val = int(len(dataset) * val_percent)
     n_train = int(len(dataset) * train_percent)
     n_test = len(dataset) - n_train - n_val
     train, val, _ = random_split(dataset, [n_train, n_val, n_test])
-    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
 
     if not os.path.exists(dir_checkpoint):
@@ -189,9 +190,9 @@ if __name__ == '__main__':
     if args.model == "unet":
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
     elif args.model == "deeplab":
-        net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
+        net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=False)
     elif args.model == "coeffnet":
-        net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device)
+        net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=True)
     else:
         raise NotImplementedError
     

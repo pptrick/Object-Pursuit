@@ -7,17 +7,18 @@ import torch.nn.functional as F
 import collections
 from model.coeffnet.deeplab_block.aspp import *
 from model.coeffnet.deeplab_block.decoder import *
+from model.coeffnet.deeplab_block.resnet import *
 from model.deeplabv3 import backbone
 
 class Coeffnet_Deeplab(nn.Module):
     n_channels = 3
     n_classes = 1
     
-    def __init__(self, base_dir, device):
+    def __init__(self, base_dir, device, use_backbone=True):
         super(Coeffnet_Deeplab, self).__init__()
         self.base_dir = base_dir
         self.device = device
-        self.base_num, self.aspp_bases, self.decoder_bases = self._parse_base_files(base_dir, device)
+        self.base_num, self.backbone_bases, self.aspp_bases, self.decoder_bases = self._parse_base_files(base_dir, device)
         print("The number of base: ", self.base_num)
         
         # build coeffs
@@ -30,19 +31,25 @@ class Coeffnet_Deeplab(nn.Module):
         self.combine_func = self._linear
         
         # build backbone
-        self.backbone = backbone.build_backbone('resnetsub', 16, nn.BatchNorm2d)
-        self.backbone.load_state_dict(
-            torch.load("./pretrained/backbone.pth", map_location=device)
-        )
-        # freeze backbone
-        for param in self.backbone.parameters():
-            param.requires_grad = False
+        self.use_backbone = use_backbone
+        if use_backbone:
+            self.backbone = resnet18
+        else:
+            self.backbone = backbone.build_backbone('resnetsub', 16, nn.BatchNorm2d)
+            self.backbone.load_state_dict(
+                torch.load("./pretrained/backbone.pth", map_location=device)
+            )
+            
+            # freeze backbone
+            for param in self.backbone.parameters():
+                param.requires_grad = False
         
         
     def _parse_base_files(self, base_dir, device):
         base_files = [os.path.join(base_dir, file) for file in os.listdir(base_dir) if file.endswith(".pth")]
         print("base files: ", base_files)
         base_num = len(base_files)
+        backbone_weights = collections.OrderedDict()
         aspp_weights = collections.OrderedDict()
         decoder_weights = collections.OrderedDict()
         for f in base_files:
@@ -50,7 +57,11 @@ class Coeffnet_Deeplab(nn.Module):
             for param in state_dict:
                 # print(param, state_dict[param].size(), type(state_dict))
                 if param.startswith("backbone"):
-                    pass
+                    if param not in backbone_weights:
+                        backbone_weights[param] = [state_dict[param]]
+                    else:
+                        assert(state_dict[param].size() == backbone_weights[param][0].size())
+                        backbone_weights[param].append(state_dict[param])
                 elif param.startswith("aspp"):
                     if param not in aspp_weights:
                         aspp_weights[param] = [state_dict[param]]
@@ -68,7 +79,7 @@ class Coeffnet_Deeplab(nn.Module):
         
         self._trans_bn(aspp_weights, base_num)
         self._trans_bn(decoder_weights, base_num)
-        return base_num, aspp_weights, decoder_weights
+        return base_num, backbone_weights, aspp_weights, decoder_weights
     
     
     def _trans_bn(self, param_dict, base_num, epsilon=1e-05):
@@ -114,21 +125,28 @@ class Coeffnet_Deeplab(nn.Module):
             raise ValueError
     
     def _update_weights(self):
+        backbone_weights = collections.OrderedDict()
         aspp_weights = collections.OrderedDict()
         decoder_weights = collections.OrderedDict()
+        if self.use_backbone:
+            for param in self.backbone_bases:
+                backbone_weights[param] = self.combine_func(self.backbone_bases[param], self.coeffs)
         for param in self.aspp_bases:
             aspp_weights[param] = self.combine_func(self.aspp_bases[param], self.coeffs)
         for param in self.decoder_bases:
             decoder_weights[param] = self.combine_func(self.decoder_bases[param], self.coeffs)
-        return aspp_weights, decoder_weights
+        return backbone_weights, aspp_weights, decoder_weights
     
     def forward(self, input):
         # update network parameters:
-        new_aspp, new_decoder = self._update_weights()
+        new_backbone, new_aspp, new_decoder = self._update_weights()
         
         # backbone forward
-        x, low_level_feat = self.backbone(input)
-        
+        if self.use_backbone:
+            x, low_level_feat = self.backbone("backbone", input, new_backbone, output_stride=16)
+        else:
+            x, low_level_feat = self.backbone(input)
+    
         # aspp forward
         x = ASPP("aspp", x, new_aspp, output_stride=16)
         

@@ -8,7 +8,7 @@ from model.deeplabv3.backbone import build_backbone
 
 class DeepLab(nn.Module):
     def __init__(self, backbone='resnet', output_stride=16, num_classes=21,
-                 sync_bn=False, freeze_bn=False, freeze_backbone = False):
+                 sync_bn=False, freeze_bn=False, freeze_backbone = False, pretrained_backbone=True):
         super(DeepLab, self).__init__()
         if backbone == 'drn':
             output_stride = 8
@@ -18,7 +18,7 @@ class DeepLab(nn.Module):
         else:
             BatchNorm = nn.BatchNorm2d
 
-        self.backbone = build_backbone(backbone, output_stride, BatchNorm)
+        self.backbone = build_backbone(backbone, output_stride, BatchNorm, pretrained=pretrained_backbone)
         
         # freeze backbone parameters
         if freeze_backbone:

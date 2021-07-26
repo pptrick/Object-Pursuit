@@ -4,6 +4,8 @@ import torch
 import torch.nn.functional as F
 
 def conv2d(x, name, params, bias=None, stride=1, padding=0, dilation=1):
+    if bias == False:
+        bias = None
     return F.conv2d(x, params[name+".weight"], bias=bias, stride=stride, padding=padding, dilation=dilation)
 
 def batch_norm(x, name, params):
@@ -23,8 +25,8 @@ def _batch_norm_linear(x, name, params):
     return F.batch_norm(x, init_mean, init_var,
                     weight=params[name+".weight_prime"], bias=params[name+".bias_prime"])
     
-def relu(x):
-    return F.relu(x)
+def relu(x, inplace=False):
+    return F.relu(x, inplace=inplace)
 
 def dropout(x, p=0.5):
     return F.dropout(x, p=p)

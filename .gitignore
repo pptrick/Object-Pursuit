@@ -140,3 +140,6 @@ xorg.log*
 /Segmentation/runs
 /Segmentation/Bases
 /Segmentation/pretrained
+
+# bash
+*.sh
