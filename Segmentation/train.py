@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
+from torch.nn.modules import loss
 from tqdm import tqdm
 
 from eval import eval_net
@@ -23,10 +24,12 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Cup/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Cup/masks']
 dir_checkpoint = 'checkpoints_coeff_test/'
 
+acc = []
+Loss = []
 
 def train_net(net,
               device,
@@ -52,7 +55,7 @@ def train_net(net,
     log_writer = open(os.path.join(dir_checkpoint, "log.txt"), "w")
     global_step = 0
     
-    # coeff_output = open("coeff.txt", "w") # coeff recorder
+    coeff_output = open("coeff.txt", "w") # coeff recorder
 
     info_text = f'''Starting training:
         Epochs:          {epochs}
@@ -100,10 +103,11 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                # coeff_output.write(str(net.coeffs.clone().detach().cpu().numpy().tolist())+"\n")
-                # coeff_output.flush()
+                coeff_output.write(str(net.coeffs.clone().detach().cpu().numpy().tolist())+"\n")
+                coeff_output.flush()
                 loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
+                Loss.append(loss.item())
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
@@ -114,10 +118,11 @@ def train_net(net,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
-                if global_step % (n_train // (10*batch_size)) == 0:
+                if global_step % int(n_train / (10*batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
                     val_score, _ = eval_net(net, val_loader, device)
+                    acc.append(val_score)
                     val_list.append(val_score)
                     if epoch > 1:
                         scheduler.step(val_score)
@@ -157,7 +162,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0004,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.004,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')
@@ -192,7 +197,7 @@ if __name__ == '__main__':
     elif args.model == "deeplab":
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=False)
     elif args.model == "coeffnet":
-        net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=True)
+        net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=False)
     else:
         raise NotImplementedError
     
@@ -219,6 +224,8 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         # torch.save(net.state_dict(), 'INTERRUPTED.pth')
         logging.info('Saved interrupt')
+        print(Loss)
+        print(acc)
         try:
             sys.exit(0)
         except SystemExit:
