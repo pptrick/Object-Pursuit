@@ -46,7 +46,7 @@ class Coeffnet_Deeplab(nn.Module):
         
         
     def _parse_base_files(self, base_dir, device):
-        base_files = [os.path.join(base_dir, file) for file in os.listdir(base_dir) if file.endswith(".pth")]
+        base_files = [os.path.join(base_dir, file) for file in sorted(os.listdir(base_dir)) if file.endswith(".pth")]
         print("base files: ", base_files)
         base_num = len(base_files)
         backbone_weights = collections.OrderedDict()

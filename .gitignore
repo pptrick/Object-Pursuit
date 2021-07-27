@@ -143,3 +143,8 @@ xorg.log*
 
 # bash
 *.sh
+
+# data
+/BaseAnalyze/Bases
+/BaseAnalyze/Vec
+/BaseAnalyze/Target
