@@ -24,12 +24,11 @@ from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Cup/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Cup/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Kettle/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Kettle/masks']
 dir_checkpoint = 'checkpoints_coeff_test/'
 
 acc = []
-Loss = []
 
 def train_net(net,
               device,
@@ -54,8 +53,6 @@ def train_net(net,
         os.mkdir(dir_checkpoint)
     log_writer = open(os.path.join(dir_checkpoint, "log.txt"), "w")
     global_step = 0
-    
-    coeff_output = open("coeff.txt", "w") # coeff recorder
 
     info_text = f'''Starting training:
         Epochs:          {epochs}
@@ -103,11 +100,8 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                coeff_output.write(str(net.coeffs.clone().detach().cpu().numpy().tolist())+"\n")
-                coeff_output.flush()
                 loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
-                Loss.append(loss.item())
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
@@ -133,7 +127,8 @@ def train_net(net,
                         log_writer.flush()
                     else:
                         try:
-                            print("\n current coeffs: ", net.coeffs)
+                            # print("\n current coeffs: ", net.coeffs)
+                            pass
                         except Exception:
                             pass
                         logging.info('Validation Dice Coeff: {}'.format(val_score))
@@ -162,7 +157,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.004,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0004,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')
@@ -224,9 +219,9 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         # torch.save(net.state_dict(), 'INTERRUPTED.pth')
         logging.info('Saved interrupt')
-        print(Loss)
         print(acc)
         try:
+            print("coefficients from coeffnet: ", net.coeffs)
             sys.exit(0)
         except SystemExit:
             os._exit(0)
