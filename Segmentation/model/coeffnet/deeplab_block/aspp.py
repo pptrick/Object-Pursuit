@@ -3,11 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from model.coeffnet.deeplab_block.function import *
 
+
 def _ASPPModule(name, x, params, padding, dilation):
     # atrous_conv
-    x = conv2d(x, name+".atrous_conv", params, padding=padding, dilation=dilation, stride=1, bias=None)
-    # bn
-    x = batch_norm(x, name+".bn", params)
+    x = conv_layer(x, name+".atrous_conv", params, padding=padding, dilation=dilation, stride=1, bias=None)
     # relu
     x = relu(x)
     return x
@@ -16,9 +15,7 @@ def global_avg_pool(name, x, params):
     # AdaptiveAvgPool2d
     x = F.adaptive_avg_pool2d(x, (1,1))
     # Conv2d
-    x = conv2d(x, name + ".1", params, bias=None, stride=1)
-    # BatchNorm
-    x = batch_norm(x, name+".2", params)
+    x = conv_layer(x, name + ".1", params, bias=None, stride=1)
     # relu
     x = relu(x)
     return x
@@ -40,9 +37,7 @@ def ASPP(name, x, params, output_stride=16):
     x = torch.cat((x1, x2, x3, x4, x5), dim=1)
     
     # conv1
-    x = conv2d(x, name + ".conv1", params, bias=None)
-    # bn1
-    x = batch_norm(x, name+".bn1", params)
+    x = conv_layer(x, name + ".conv1", params, bias=None)
     # relu
     x = relu(x)
     # dropout

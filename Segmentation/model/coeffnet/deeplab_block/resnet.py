@@ -8,12 +8,10 @@ EXPANSION = 1
 def BasicBlock(name, x, params, stride=1, dilation=1, downsample=None):
     residual = x
     
-    out = conv2d(x, name+".conv1", params, stride=stride, dilation=dilation, padding=dilation, bias=False)
-    out = batch_norm(out, name+".bn1", params)
+    out = conv_layer(x, name+".conv1", params, stride=stride, dilation=dilation, padding=dilation, bias=False)
     out = relu(out, inplace=True)
     
-    out = conv2d(out, name+".conv2", params, dilation=dilation, padding=dilation, bias=False)
-    out = batch_norm(out, name+".bn2", params)
+    out = conv_layer(out, name+".conv2", params, dilation=dilation, padding=dilation, bias=False)
     
     if downsample is not None:
         residual = downsample(name+".downsample", x, params, stride=stride)
@@ -24,8 +22,7 @@ def BasicBlock(name, x, params, stride=1, dilation=1, downsample=None):
     return out
 
 def downsample(name, x, params, stride, bias=False):
-    out = conv2d(x, name+".0", params, stride=stride, bias=bias)
-    out = batch_norm(out, name+".1", params)
+    out = conv_layer(x, name+".0", params, stride=stride, bias=bias)
     return out
 
 def layer(name, x, params, inplanes, block, planes, blocks, stride=1, dilation=1):
@@ -66,8 +63,7 @@ def ResNet(name, input, params, block, layers, output_stride):
         raise NotImplementedError
     
     # head
-    x = conv2d(input, name+".conv1", params, bias=False, stride=2, padding=3)
-    x = batch_norm(x, name+".bn1", params)
+    x = conv_layer(input, name+".conv1", params, bias=False, stride=2, padding=3)
     x = relu(x, inplace=True)
     x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1)
     
