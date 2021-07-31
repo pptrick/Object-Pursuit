@@ -19,13 +19,14 @@ from torch.utils.data import DataLoader, random_split
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
 from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
+from model.coeffnet.coeffnet import Coeffnet
 
 # dir_img = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/imgs/'
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Kettle/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Kettle/masks']
+dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Mug/imgs']
+dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Mug/masks']
 dir_checkpoint = 'checkpoints_coeff_test/'
 
 acc = []
@@ -168,7 +169,7 @@ def get_args():
     parser.add_argument('--cuda', dest='cuda', type=int, default=0,
                         help='cuda device number')
     parser.add_argument('--model', type=str, default='coeffnet',
-                        choices=['coeffnet', 'deeplab', 'unet'],
+                        choices=['coeffnet', 'deeplab', 'unet', 'coeffnet_base'],
                         help='model name')
 
     return parser.parse_args()
@@ -191,8 +192,10 @@ if __name__ == '__main__':
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
     elif args.model == "deeplab":
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=False)
-    elif args.model == "coeffnet":
+    elif args.model == "coeffnet_base":
         net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=False)
+    elif args.model == "coeffnet":
+        net = Coeffnet(z_dim=100)
     else:
         raise NotImplementedError
     

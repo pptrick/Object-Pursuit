@@ -9,6 +9,8 @@ from model.coeffnet.deeplab_block.decoder import Decoder
 from model.coeffnet.hypernet import HypernetBlock
 
 class Coeffnet(nn.Module):
+    n_channels = 3
+    n_classes = 1
     def __init__(self, z_dim, param_dict=deeplab_param):
         super(Coeffnet, self).__init__()
         self.param_dict = param_dict

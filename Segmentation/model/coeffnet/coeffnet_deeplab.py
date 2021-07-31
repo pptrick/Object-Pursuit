@@ -36,9 +36,6 @@ class Coeffnet_Deeplab(nn.Module):
             self.backbone = resnet18
         else:
             self.backbone = backbone.build_backbone('resnetsub', 16, nn.BatchNorm2d)
-            self.backbone.load_state_dict(
-                torch.load("./pretrained/backbone.pth", map_location=device)
-            )
             
             # freeze backbone
             for param in self.backbone.parameters():
