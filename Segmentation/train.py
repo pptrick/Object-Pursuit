@@ -27,7 +27,7 @@ from model.coeffnet.coeffnet import Coeffnet
 # dir_mask = './data/masks'
 dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Mug/imgs']
 dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Mug/masks']
-dir_checkpoint = 'checkpoints_coeff_test/'
+dir_checkpoint = 'checkpoints_coeff_test_Adam/'
 
 acc = []
 
@@ -37,7 +37,7 @@ def train_net(net,
               batch_size=1,
               lr=0.001,
               val_percent=0.1,
-              save_cp=False,
+              save_cp=True,
               img_scale=0.5):
 
     dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
@@ -72,8 +72,9 @@ def train_net(net,
     log_writer.write(info_text)
     log_writer.flush()
 
-    optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-8, momentum=0.9)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
+    # optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-8, momentum=0.9)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-8)
+    
     if net.n_classes > 1:
         criterion = nn.CrossEntropyLoss()
     else:
@@ -119,8 +120,6 @@ def train_net(net,
                     val_score, _ = eval_net(net, val_loader, device)
                     acc.append(val_score)
                     val_list.append(val_score)
-                    if epoch > 1:
-                        scheduler.step(val_score)
 
                     if net.n_classes > 1:
                         logging.info('Validation cross entropy: {}'.format(val_score))
@@ -143,9 +142,11 @@ def train_net(net,
                 pass
             avg_valid_acc = sum(val_list)/len(val_list)
             if avg_valid_acc > max_valid_acc:
-                torch.save(net.state_dict(),
-                        dir_checkpoint + f'CP_epoch{epoch + 1}_val_{avg_valid_acc}.pth')
+                # torch.save(net.state_dict(),
+                #         dir_checkpoint + f'CP_epoch{epoch + 1}_val_{avg_valid_acc}.pth')
+                torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
                 max_valid_acc = avg_valid_acc
+                log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}')
                 logging.info(f'Checkpoint {epoch + 1} saved !')
 
     log_writer.close()
@@ -158,7 +159,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0004,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0008,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')

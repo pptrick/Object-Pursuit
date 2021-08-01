@@ -25,12 +25,19 @@ def weight2vec(weight_file, prefix_neglect=[], suffix_neglect=[]):
 
 def save_vec(weight_vec, dir, name="weight"):
     np.save(os.path.join(dir, name), weight_vec)
+    
+def viz_weight(weight_file):
+    state_dict = torch.load(weight_file, map_location='cpu')
+    # for param in state_dict:
+    #     print(param, state_dict[param].size())
+    print(state_dict['z'])
 
 
 if __name__ == "__main__":
-    obj = "Pot"
-    name = "fp2_"+obj
+    # obj = "Pot"
+    # name = "fp2_"+obj
     # weight_vec = weight2vec(f"/data/pancy/object_pursuit/checkpoints/pretrained_backbone/checkpoints_{obj}_FP2/MODEL_{obj}_fp2.pth", ["backbone"], ["running_mean", "running_var", "num_batches_tracked"])
-    weight_vec = weight2vec(f"../Segmentation/INTERRUPTED.pth", ["backbone"], ["running_mean", "running_var", "num_batches_tracked"])
-    save_vec(weight_vec, dir="./Vec", name="Random")
-    print(weight_vec.shape)
+    # weight_vec = weight2vec(f"../Segmentation/INTERRUPTED.pth", ["backbone"], ["running_mean", "running_var", "num_batches_tracked"])
+    # save_vec(weight_vec, dir="./Vec", name="Random")
+    # print(weight_vec.shape)
+    viz_weight("../Segmentation/checkpoints_coeff_test/Best.pth")
