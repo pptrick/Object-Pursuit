@@ -21,13 +21,16 @@ from model.unet import UNet
 from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 from model.coeffnet.coeffnet import Coeffnet
 
+from loss.memory_loss import MemoryLoss
+
 # dir_img = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/imgs/'
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-dir_img = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Mug/imgs']
-dir_mask = ['/data/pancy/iThor/single_obj/data_FloorPlan2_Mug/masks']
-dir_checkpoint = 'checkpoints_coeff_test_Adam/'
+obj = 'Mug'
+dir_img = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/imgs']
+dir_mask = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/masks']
+dir_checkpoint = f'checkpoints_coeff_{obj}/'
 
 acc = []
 
@@ -72,13 +75,17 @@ def train_net(net,
     log_writer.write(info_text)
     log_writer.flush()
 
-    # optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-8, momentum=0.9)
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-8)
+    optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-7, momentum=0.9)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
     
     if net.n_classes > 1:
         criterion = nn.CrossEntropyLoss()
     else:
         criterion = nn.BCEWithLogitsLoss()
+        
+    # Memory loss    
+    memloss = MemoryLoss(Base_dir='./Bases', device=device)
+    mem_coeff = 0.01
         
     max_valid_acc = 0
 
@@ -86,6 +93,7 @@ def train_net(net,
         net.train()
 
         epoch_loss = 0
+        count = 0
         val_list = []
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='img') as pbar:
             for batch in train_loader:
@@ -102,8 +110,9 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                loss = criterion(masks_pred, true_masks)
+                loss = criterion(masks_pred, true_masks) + mem_coeff * memloss(net.hypernet)
                 epoch_loss += loss.item()
+                count += 1
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
@@ -120,6 +129,7 @@ def train_net(net,
                     val_score, _ = eval_net(net, val_loader, device)
                     acc.append(val_score)
                     val_list.append(val_score)
+                    # scheduler.step(val_score)
 
                     if net.n_classes > 1:
                         logging.info('Validation cross entropy: {}'.format(val_score))
@@ -142,11 +152,10 @@ def train_net(net,
                 pass
             avg_valid_acc = sum(val_list)/len(val_list)
             if avg_valid_acc > max_valid_acc:
-                # torch.save(net.state_dict(),
-                #         dir_checkpoint + f'CP_epoch{epoch + 1}_val_{avg_valid_acc}.pth')
                 torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
+                net.save_z(f'./Bases/{obj}.json')
                 max_valid_acc = avg_valid_acc
-                log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}')
+                log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}, current loss {epoch_loss/count}\n')
                 logging.info(f'Checkpoint {epoch + 1} saved !')
 
     log_writer.close()
@@ -159,7 +168,7 @@ def get_args():
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0008,
+    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0004,
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')
@@ -196,7 +205,7 @@ if __name__ == '__main__':
     elif args.model == "coeffnet_base":
         net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=False)
     elif args.model == "coeffnet":
-        net = Coeffnet(z_dim=100)
+        net = Coeffnet(z_dim=100, device=device)
     else:
         raise NotImplementedError
     

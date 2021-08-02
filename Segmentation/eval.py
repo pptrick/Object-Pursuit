@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import argparse
 from tqdm import tqdm
 
-from utils.dice_loss import dice_coeff
+from loss.dice_loss import dice_coeff
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
