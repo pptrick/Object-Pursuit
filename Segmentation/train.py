@@ -27,7 +27,7 @@ from loss.memory_loss import MemoryLoss
 # dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
 # dir_img = './data/imgs'  
 # dir_mask = './data/masks'
-obj = 'Mug'
+obj = 'Kettle'
 dir_img = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/masks']
 dir_checkpoint = f'checkpoints_coeff_{obj}/'
@@ -85,7 +85,7 @@ def train_net(net,
         
     # Memory loss    
     memloss = MemoryLoss(Base_dir='./Bases', device=device)
-    mem_coeff = 0.01
+    mem_coeff = 0.02
         
     max_valid_acc = 0
 
