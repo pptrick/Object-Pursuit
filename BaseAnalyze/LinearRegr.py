@@ -31,11 +31,12 @@ def manifold(bases, dim=2):
     
     
 if __name__ == "__main__":
-    target_obj = 'Cup'
+    target_obj = 'Knife'
     print("target object: ", target_obj)
-    bases, target = load("./Vec", f"./Vec/fp1_{target_obj}.npy")
+    bases, target = load("./Vec", f"./Vec/{target_obj}.npy", target_obj)
+    print(f"target {target_obj} norm: ", np.linalg.norm(target))
     coeff, res = get_regress_coeff(bases, target)
     print(coeff)
     error = distance_r(res, target)
     print(error)
-    manifold(bases)
+    # manifold(bases)

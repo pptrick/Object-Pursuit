@@ -8,7 +8,7 @@ import random
 # from supervisor import Supervisor_loop
 
 class SingleObjEnv:
-    def __init__(self, objectType, scene="FloorPlan1", out_dir="./data", change_pos_times=120, remove_other_object=True, width=572, height=572, local_executable_path = None):
+    def __init__(self, objectType, scene="FloorPlan1", out_dir="./data", change_pos_times=120, remove_other_object_prob=0.0, width=572, height=572, local_executable_path = None):
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         self.outdir = out_dir
@@ -16,7 +16,7 @@ class SingleObjEnv:
         self.mainobjType = objectType
         self.scene = scene
         self.x_display = "0"
-        self.remove_other_object = remove_other_object
+        self.remove_other_object_prob = remove_other_object_prob
         self.controller = Controller(
             agentMode="default",
             visibilityDistance=1.2,
@@ -25,7 +25,7 @@ class SingleObjEnv:
             # step sizes
             gridSize=0.5,
             snapToGrid=True,
-            rotateStepDegrees=0.1,
+            rotateStepDegrees=6,
             
             # image modalities
             renderDepthImage=True,
@@ -53,7 +53,7 @@ class SingleObjEnv:
         mainobj_exist = False
         for obj in obj_status:
             if (obj["pickupable"] or obj["moveable"]) and obj["objectType"] != self.mainobjType:
-                if self.remove_other_object:
+                if self.remove_other_object_prob >= random.random():
                     self.controller.step(
                         action="RemoveFromScene",
                         objectId=obj["objectId"]
@@ -85,8 +85,6 @@ class SingleObjEnv:
             print(f"search complete, find {len(poses)} available position, seed {seed}")
             num = 0
             for pose in tqdm(poses):
-                # if pose['horizon'] <= 0:
-                #     continue
                 state = self.controller.step("TeleportFull", **pose)
                 frame = state.frame
                 depth_frame = state.depth_frame
@@ -122,13 +120,14 @@ class SingleObjEnv:
         
     def genData(self, horizons=None):
         print("[INFO] start to generate data")
-        for i in range(17, self.change_pos_times):
+        for i in range(self.change_pos_times):
             self._collectData(i, horizons)
             # np.savez(os.path.join(self.outdir, f"ithor_single_{self.scene}.npz"), **self.npz_data)
         
     
 if __name__ == "__main__":
-    env = SingleObjEnv(objectType="Egg", scene=f"FloorPlan2", change_pos_times=200, out_dir=f"./data/",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
+    obj = 'DishSponge'
+    env = SingleObjEnv(objectType=obj, scene=f"FloorPlan2", change_pos_times=140, remove_other_object_prob=0.3, out_dir=f"/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     # env = SingleObjEnv(objectType="SaltShaker", scene=f"FloorPlan2", change_pos_times=200, out_dir=f"./data_FloorPlan4_Cup", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     env.genData()
     

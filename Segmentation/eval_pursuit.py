@@ -2,7 +2,7 @@ import os
 import torch
 import random
 import argparse
-from model.coeffnet.coeffnet import Coeffnet
+from model.coeffnet.coeffnet import Singlenet
 from utils.dataset import BasicDataset
 from torch.utils.data import DataLoader, sampler
 from eval import eval_net
@@ -10,9 +10,9 @@ from eval import eval_net
 def _get_args():
     parser = argparse.ArgumentParser(description='Evaluate hyper-coeffnet (object pursuit) performance on certain dataset',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-d', '--data', dest='data', type=str, default='/data/pancy/iThor/single_obj/data_FloorPlan2_Kettle/',
+    parser.add_argument('-d', '--data', dest='data', type=str, default='/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/',
                         help="data path of imgs and masks")
-    parser.add_argument('-l', '--hyper', dest='hyper', type=str, default="./checkpoints_coeff_Kettle/Best.pth",
+    parser.add_argument('-l', '--hyper', dest='hyper', type=str, default="./checkpoints_coeff_Egg/Best.pth",
                         help='path for hypernet parameter')
     parser.add_argument('-z', '--z', dest='z', type=str, default="./Bases/Plate.json",
                         help='path for z')
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     data_size = args.data_size
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    net = Coeffnet(z_dim=100, device=device)
+    net = Singlenet(z_dim=100, device=device)
     net.to(device=device)
     net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
     net.load_z(z_path)

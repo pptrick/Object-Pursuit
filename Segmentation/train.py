@@ -19,22 +19,19 @@ from torch.utils.data import DataLoader, random_split
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
 from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
-from model.coeffnet.coeffnet import Coeffnet
+from model.coeffnet.coeffnet import Coeffnet, Singlenet
 
 from loss.memory_loss import MemoryLoss
 
-# dir_img = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/imgs/'
-# dir_mask = '/home/pancy/IP/ithor/DataGen/data_FloorPlan1_Plate/masks/'
-# dir_img = './data/imgs'  
-# dir_mask = './data/masks'
-obj = 'Kettle'
+obj = 'Mug'
 dir_img = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_coeff_{obj}/'
+dir_checkpoint = f'checkpoints_coeff_{obj}_test/'
 
 acc = []
 
-def train_net(net,
+def train_net(args,
+              net,
               device,
               epochs=5,
               batch_size=1,
@@ -83,9 +80,10 @@ def train_net(net,
     else:
         criterion = nn.BCEWithLogitsLoss()
         
-    # Memory loss    
-    memloss = MemoryLoss(Base_dir='./Bases', device=device)
-    mem_coeff = 0.02
+    # Memory loss
+    if args.model == 'singlenet':    
+        memloss = MemoryLoss(Base_dir='./Bases', device=device)
+        mem_coeff = 0.02
         
     max_valid_acc = 0
 
@@ -110,7 +108,10 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                loss = criterion(masks_pred, true_masks) + mem_coeff * memloss(net.hypernet)
+                if args.model == 'singlenet':    
+                    loss = criterion(masks_pred, true_masks) + mem_coeff * memloss(net.hypernet)
+                else:
+                    loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
                 count += 1
 
@@ -137,8 +138,7 @@ def train_net(net,
                         log_writer.flush()
                     else:
                         try:
-                            # print("\n current coeffs: ", net.coeffs)
-                            pass
+                            print("\n current coeffs: ", net.coeffs)
                         except Exception:
                             pass
                         logging.info('Validation Dice Coeff: {}'.format(val_score))
@@ -152,8 +152,9 @@ def train_net(net,
                 pass
             avg_valid_acc = sum(val_list)/len(val_list)
             if avg_valid_acc > max_valid_acc:
-                torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
-                net.save_z(f'./Bases/{obj}.json')
+                if args.model == 'singlenet':    
+                    torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
+                    net.save_z(f'./Bases/{obj}.json')
                 max_valid_acc = avg_valid_acc
                 log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}, current loss {epoch_loss/count}\n')
                 logging.info(f'Checkpoint {epoch + 1} saved !')
@@ -178,8 +179,8 @@ def get_args():
                         help='Percent of the data that is used as validation (0-100)')
     parser.add_argument('--cuda', dest='cuda', type=int, default=0,
                         help='cuda device number')
-    parser.add_argument('--model', type=str, default='coeffnet',
-                        choices=['coeffnet', 'deeplab', 'unet', 'coeffnet_base'],
+    parser.add_argument('--model', type=str, default='singlenet',
+                        choices=['coeffnet', 'deeplab', 'unet', 'coeffnet_base', 'singlenet'],
                         help='model name')
 
     return parser.parse_args()
@@ -204,8 +205,10 @@ if __name__ == '__main__':
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=False)
     elif args.model == "coeffnet_base":
         net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=False)
+    elif args.model == "singlenet":
+        net = Singlenet(z_dim=100, device=device)
     elif args.model == "coeffnet":
-        net = Coeffnet(z_dim=100, device=device)
+        net = Coeffnet(base_dir='./Bases', z_dim=100, device=device, hypernet_path=os.path.join(dir_checkpoint, 'Best.pth'))
     else:
         raise NotImplementedError
     
@@ -222,7 +225,8 @@ if __name__ == '__main__':
     net.to(device=device)
 
     try:
-        train_net(net=net,
+        train_net(args=args,
+                  net=net,
                   epochs=args.epochs,
                   batch_size=args.batchsize,
                   lr=args.lr,
