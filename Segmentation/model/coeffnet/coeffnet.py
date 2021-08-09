@@ -46,6 +46,25 @@ class Singlenet(nn.Module):
         weights = self.hypernet(z)
         return deeplab_forward(input, weights)
     
+
+class Multinet(nn.Module):
+    n_channels = 3
+    n_classes = 1
+    def __init__(self, obj_num, z_dim, device, param_dict=deeplab_param):
+        super(Multinet, self).__init__()
+        self.obj_num = obj_num
+        self.z_dim = z_dim
+        self.device = device
+        self.z = nn.Parameter(torch.randn((obj_num, z_dim)))
+        self.hypernet = Hypernet(z_dim, param_dict=param_dict)
+        
+    def forward(self, input, ident):
+        ident = ident[0].item()
+        z = self.z[ident]
+        weights = self.hypernet(z)
+        return deeplab_forward(input, weights)
+
+    
 class Coeffnet(nn.Module):
     n_channels = 3
     n_classes = 1

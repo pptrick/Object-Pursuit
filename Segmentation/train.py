@@ -18,7 +18,6 @@ from torch.utils.data import DataLoader, random_split
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
-from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
 from model.coeffnet.coeffnet import Coeffnet, Singlenet
 
 from loss.memory_loss import MemoryLoss
@@ -180,7 +179,7 @@ def get_args():
     parser.add_argument('--cuda', dest='cuda', type=int, default=0,
                         help='cuda device number')
     parser.add_argument('--model', type=str, default='singlenet',
-                        choices=['coeffnet', 'deeplab', 'unet', 'coeffnet_base', 'singlenet'],
+                        choices=['coeffnet', 'deeplab', 'unet', 'singlenet'],
                         help='model name')
 
     return parser.parse_args()
@@ -203,8 +202,6 @@ if __name__ == '__main__':
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
     elif args.model == "deeplab":
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=False)
-    elif args.model == "coeffnet_base":
-        net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases/", device, use_backbone=False)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
     elif args.model == "coeffnet":

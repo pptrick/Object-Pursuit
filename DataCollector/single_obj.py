@@ -23,9 +23,9 @@ class SingleObjEnv:
             scene=self.scene,
             
             # step sizes
-            gridSize=0.5,
+            gridSize=0.6,
             snapToGrid=True,
-            rotateStepDegrees=6,
+            rotateStepDegrees=8,
             
             # image modalities
             renderDepthImage=True,
@@ -52,6 +52,8 @@ class SingleObjEnv:
     def _remove_other_object(self, obj_status):
         mainobj_exist = False
         for obj in obj_status:
+            # if obj["pickupable"]:
+            #     print(obj["objectType"], obj["name"])
             if (obj["pickupable"] or obj["moveable"]) and obj["objectType"] != self.mainobjType:
                 if self.remove_other_object_prob >= random.random():
                     self.controller.step(
@@ -126,8 +128,8 @@ class SingleObjEnv:
         
     
 if __name__ == "__main__":
-    obj = 'DishSponge'
-    env = SingleObjEnv(objectType=obj, scene=f"FloorPlan2", change_pos_times=140, remove_other_object_prob=0.3, out_dir=f"/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
+    obj = 'Footstool'
+    env = SingleObjEnv(objectType=obj, scene=f"FloorPlan2", change_pos_times=80, remove_other_object_prob=0.3, out_dir=f"/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     # env = SingleObjEnv(objectType="SaltShaker", scene=f"FloorPlan2", change_pos_times=200, out_dir=f"./data_FloorPlan4_Cup", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     env.genData()
     

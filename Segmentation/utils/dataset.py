@@ -1,4 +1,3 @@
-from operator import index
 import os
 from os.path import splitext
 from os import listdir
@@ -15,7 +14,6 @@ import utils.custom_transforms as tr
 
 class BasicDataset(Dataset):
     def __init__(self, imgs_dir, masks_dir, scale=1, mask_suffix='', train=False):
-        print(imgs_dir, masks_dir)
         self.imgs_dir = self._parse_dirs(imgs_dir)
         self.masks_dir = self._parse_dirs(masks_dir)
         self.scale = scale
@@ -125,48 +123,7 @@ class BasicDataset(Dataset):
         return composed_transforms(sample)
 
 
-class CarvanaDataset(BasicDataset):
-    def __init__(self, imgs_dir, masks_dir, scale=1):
-        super().__init__(imgs_dir, masks_dir, scale, mask_suffix='_mask')
 
-# TODO: since we change something in BasicDataset, we need to change relavent things here     
-class DepthDataset(BasicDataset):
-    def __init__(self, depths_dir, masks_dir, mask_suffix=''):
-        self.depths_dir = depths_dir
-        self.masks_dir = masks_dir
-        self.mask_suffix = mask_suffix
-
-        self.ids = [splitext(file)[0] for file in listdir(depths_dir)
-                    if not file.startswith('.')]
-        print(f'Creating dataset with {len(self.ids)} examples')
-
-    def __len__(self):
-        return len(self.ids)
-
-    def __getitem__(self, i):
-        idx = self.ids[i]
-        mask_file = glob(os.path.join(self.masks_dir, idx + self.mask_suffix + '.*'))
-        depth_file = glob(os.path.join(self.depths_dir, idx + '.*'))
-
-        assert len(mask_file) == 1, \
-            f'Either no mask or multiple masks found for the ID {idx}: {mask_file}'
-        assert len(depth_file) == 1, \
-            f'Either no image or multiple images found for the ID {idx}: {depth_file}'
-            
-        
-        mask = Image.open(mask_file[0])
-        depth = np.load(depth_file[0])['arr_0']
-
-        depth = np.expand_dims(depth, 0)
-        mask = self.preprocess(mask, 1)
-        
-        assert depth.shape == mask.shape, \
-            f'Image and mask {idx} should be the same size, but are {depth.shape} and {mask.shape}'
-
-        return {
-            'image': torch.from_numpy(depth).type(torch.FloatTensor),
-            'mask': torch.from_numpy(mask).type(torch.FloatTensor)
-        }
         
 if __name__ == "__main__":
     d = BasicDataset(["/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/imgs/", "/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/imgs/"], ["/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/masks/", "/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/masks/"])

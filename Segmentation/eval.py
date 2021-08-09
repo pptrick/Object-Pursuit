@@ -14,8 +14,7 @@ from loss.dice_loss import dice_coeff
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
-from model.coeffnet.coeffnet_deeplab import Coeffnet_Deeplab
-
+from model.coeffnet.coeffnet import Coeffnet, Singlenet
 
 def eval_net(net, loader, device):
     """Evaluation without the densecrf with the dice coefficient"""
@@ -108,7 +107,7 @@ if __name__ == '__main__':
     # model
     # net = UNet(n_channels=3, n_classes=1, bilinear=True)
     # net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=True)
-    net = Coeffnet_Deeplab("/home/pancy/IP/Object-Pursuit/Segmentation/Bases", device)
+    net = Singlenet(z_dim=100, device=device)
     
     print(f'Network:\n'
         f'\t{net.n_channels} input channels\n'
