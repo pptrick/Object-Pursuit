@@ -9,7 +9,7 @@ from utils.multiobj_dataset import Multiobj_Dataloader
 
 data_path = "/data/pancy/iThor/single_obj/FloorPlan2"
 prefix = "data_FloorPlan2_"
-cuda = 1
+cuda = 2
 
 device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
 dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix)
@@ -19,8 +19,8 @@ net.to(device=device)
 optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
 
-epochs = 50
-checkpoints_path = './checkpoints'
+epochs = 100
+checkpoints_path = './checkpoints_equal'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
@@ -75,7 +75,7 @@ for epoch in range(epochs):
                 log_writer.flush()
                 loss_rec = []
                 
-            if step % (n_size//50) == 0:
+            if step % (n_size//5) == 0:
                 torch.save(net.state_dict(), os.path.join(checkpoints_path, f'checkpoint.pth'))
                 log_writer.write(f"checkpoint saved ! \n")
                 log_writer.flush()

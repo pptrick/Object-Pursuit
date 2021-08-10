@@ -82,18 +82,18 @@ class SameClassSampler(Sampler):
         self.batch_size = batch_size
         self.index_list = data_source.index_list
         assert isinstance(self.index_list, list)
-        self._len = self._cal_len()
+        self._len, self._min_len = self._cal_len()
         
     def _cal_len(self):
         l = 0
-        for ls in self.index_list:
-            l += len(ls)//self.batch_size
-        return l
+        min_len = min([len(ls) for ls in self.index_list])
+        l = (min_len//self.batch_size) * len(self.index_list)
+        return l, min_len
         
-    def _unstop_list(self, cls_ptr, index_list):
+    def _unstop_list(self, cls_ptr):
         unstop_list = []
         for i in range(len(cls_ptr)):
-            if cls_ptr[i] <= (len(index_list[i]) - self.batch_size):
+            if cls_ptr[i] <= (self._min_len - self.batch_size):
                 unstop_list.append(i)
         return unstop_list
         
@@ -102,14 +102,14 @@ class SameClassSampler(Sampler):
         for i in range(len(self.index_list)):
             random.shuffle(self.index_list[i])
         cls_ptr = [0] * len(self.index_list)
-        unstop_list = self._unstop_list(cls_ptr, self.index_list)
+        unstop_list = self._unstop_list(cls_ptr)
         while len(unstop_list) > 0:
             i = random.choice(unstop_list)
             batch = self.index_list[i][cls_ptr[i]:cls_ptr[i]+self.batch_size]
             assert len(batch) == self.batch_size
             yield batch
             cls_ptr[i] += self.batch_size
-            unstop_list = self._unstop_list(cls_ptr, self.index_list)
+            unstop_list = self._unstop_list(cls_ptr)
             
     def __len__(self):
         return self._len
@@ -122,7 +122,8 @@ def Multiobj_Dataloader(data_dir, batch_size, num_workers=1, prefix="data_FloorP
         
     
 if __name__ == "__main__":
-    dataloader = Multiobj_Dataloader("/data/pancy/iThor/single_obj/FloorPlan3", batch_size=4, prefix="data_FloorPlan3_")
+    dataloader, _ = Multiobj_Dataloader("/data/pancy/iThor/single_obj/FloorPlan3", batch_size=4, prefix="data_FloorPlan3_")
+    print(len(dataloader))
     for step, data in enumerate(dataloader):
         print(data['cls'])
             
