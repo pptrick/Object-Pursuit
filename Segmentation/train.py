@@ -13,7 +13,7 @@ from tqdm import tqdm
 from eval import eval_net
 
 from torch.utils.tensorboard import SummaryWriter
-from utils.dataset import BasicDataset, DepthDataset
+from utils.dataset import BasicDataset
 from torch.utils.data import DataLoader, random_split
 
 from model.deeplabv3.deeplab import *
@@ -22,9 +22,9 @@ from model.coeffnet.coeffnet import Coeffnet, Singlenet
 
 from loss.memory_loss import MemoryLoss
 
-obj = 'Mug'
-dir_img = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/imgs']
-dir_mask = [f'/data/pancy/iThor/single_obj/data_FloorPlan2_{obj}/masks']
+obj = 'Spatula'
+dir_img = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/imgs']
+dir_mask = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/masks']
 dir_checkpoint = f'checkpoints_coeff_{obj}_test/'
 
 acc = []
@@ -80,7 +80,7 @@ def train_net(args,
         criterion = nn.BCEWithLogitsLoss()
         
     # Memory loss
-    if args.model == 'singlenet':    
+    if args.model == 'single':    
         memloss = MemoryLoss(Base_dir='./Bases', device=device)
         mem_coeff = 0.02
         
@@ -107,7 +107,7 @@ def train_net(args,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                if args.model == 'singlenet':    
+                if args.model == 'single':    
                     loss = criterion(masks_pred, true_masks) + mem_coeff * memloss(net.hypernet)
                 else:
                     loss = criterion(masks_pred, true_masks)
@@ -201,9 +201,10 @@ if __name__ == '__main__':
     if args.model == "unet":
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
     elif args.model == "deeplab":
-        net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=False)
+        net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=True)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
+        net.init_hypernet("./checkpoints_equal/checkpoint.pth")
     elif args.model == "coeffnet":
         net = Coeffnet(base_dir='./Bases', z_dim=100, device=device, hypernet_path=os.path.join(dir_checkpoint, 'Best.pth'))
     else:

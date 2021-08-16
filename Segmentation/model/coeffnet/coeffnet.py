@@ -1,5 +1,6 @@
 import collections
 import os
+from pickle import TRUE
 import re
 import math
 import torch
@@ -10,6 +11,8 @@ from model.coeffnet.deeplab_block.resnet import resnet18
 from model.coeffnet.deeplab_block.aspp import ASPP
 from model.coeffnet.deeplab_block.decoder import Decoder
 from model.coeffnet.hypernet import Hypernet
+
+from model.deeplabv3.backbone import build_backbone
 
 def deeplab_forward(input, weights):
     # backbone forward
@@ -40,6 +43,24 @@ class Singlenet(nn.Module):
     def load_z(self, file_path):
         with torch.no_grad():
             self.z.data = torch.load(file_path, map_location=self.device)['z']
+            
+    def init_hypernet(self, hypernet_path, freeze=True):
+        if hypernet_path is not None:
+            print(hypernet_path)
+            assert(os.path.isfile(hypernet_path) and hypernet_path.endswith(".pth"))
+            state_dict = torch.load(hypernet_path, map_location=self.device)
+            hypernet_dict = collections.OrderedDict()
+            for param in state_dict:
+                if param.startswith("hypernet."):
+                    new_param = re.match(r'hypernet\.(.+)', param).group(1)
+                    hypernet_dict[new_param] = state_dict[param]
+                elif param.startswith("blocks."):
+                    hypernet_dict[param] = state_dict[param]
+            self.hypernet.load_state_dict(hypernet_dict)
+        # freeze hypernet
+        if freeze:
+            for param in self.hypernet.parameters():
+                param.requires_grad = False
     
     def forward(self, input):
         z = self.z
@@ -56,13 +77,31 @@ class Multinet(nn.Module):
         self.z_dim = z_dim
         self.device = device
         self.z = nn.Parameter(torch.randn((obj_num, z_dim)))
+        self.freeze_z_one_hot()
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)
+        
+        self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
+        
+    def freeze_z_one_hot(self):
+        self.z.data = torch.zeros((self.obj_num, self.z_dim))
+        for i in range(self.obj_num):
+            self.z.data[i][i] = torch.tensor(1.0)
+        self.z.requires_grad = False
         
     def forward(self, input, ident):
         ident = ident[0].item()
         z = self.z[ident]
         weights = self.hypernet(z)
-        return deeplab_forward(input, weights)
+        # return deeplab_forward(input, weights)
+        
+        # backbone forward
+        x, low_level_feat = self.backbone(input)
+        # aspp forward
+        x = ASPP("aspp", x, weights, output_stride=16)
+        # decoder forward
+        x = Decoder("decoder", x, low_level_feat, weights)
+        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
+        return x
 
     
 class Coeffnet(nn.Module):

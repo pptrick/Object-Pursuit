@@ -40,8 +40,9 @@ def save_vec(weight_vec, dir, name="weight"):
     
 def viz_weight(weight_file):
     state_dict = torch.load(weight_file, map_location='cpu')
-    for param in state_dict:
-        print(param, state_dict[param].size())
+    print(state_dict['z'][0])
+    # for param in state_dict:
+    #     print(param, state_dict[param].size())
     # for param in state_dict['weights']:
     #     print(param, state_dict['weights'][param].size())
     # print(state_dict['z'])
@@ -54,7 +55,7 @@ if __name__ == "__main__":
     # weight_vec = weight2vec(f"../Segmentation/INTERRUPTED.pth", ["backbone"], ["running_mean", "running_var", "num_batches_tracked"])
     # save_vec(weight_vec, dir="./Vec", name="Random")
     # print(weight_vec.shape)
-    # viz_weight("../Segmentation/checkpoints_coeff_Egg/Best.pth")
-    z2vec("../Segmentation/Bases", "./Vec")
+    viz_weight("../Segmentation/checkpoints_coeff_Spatula_test/checkpoint.pth")
+    # z2vec("../Segmentation/Bases", "./Vec")
     # obj = 'Kettle'
     # vec2z(f'./Vec/{obj}.npy', f'../Segmentation/Bases/{obj}.json')

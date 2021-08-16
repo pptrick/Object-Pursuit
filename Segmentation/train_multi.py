@@ -9,18 +9,21 @@ from utils.multiobj_dataset import Multiobj_Dataloader
 
 data_path = "/data/pancy/iThor/single_obj/FloorPlan2"
 prefix = "data_FloorPlan2_"
-cuda = 2
+cuda = 3
 
 device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
 dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix)
 net = Multinet(obj_num=dataset.obj_num, z_dim=100, device=device)
+net.load_state_dict(
+        torch.load("./checkpoints_fc_onehot/checkpoint.pth", map_location=device)
+    )
 net.to(device=device)
 
 optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
 
 epochs = 100
-checkpoints_path = './checkpoints_equal'
+checkpoints_path = './checkpoints_fc_onehot'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
@@ -50,7 +53,7 @@ for epoch in range(epochs):
                 f'Network has been defined with {net.n_channels} input channels, ' \
                 f'but loaded images have {imgs.shape[1]} channels. Please check that ' \
                 'the images are loaded correctly.'
-                
+            
             imgs = imgs.to(device=device, dtype=torch.float32)
             mask_type = torch.float32 if net.n_classes == 1 else torch.long
             true_masks = true_masks.to(device=device, dtype=mask_type)
@@ -65,7 +68,6 @@ for epoch in range(epochs):
             loss.backward()
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
             optimizer.step()
-            
             pbar.update(1)
             step += 1
             
@@ -75,7 +77,7 @@ for epoch in range(epochs):
                 log_writer.flush()
                 loss_rec = []
                 
-            if step % (n_size//5) == 0:
+            if step % (n_size) == 0:
                 torch.save(net.state_dict(), os.path.join(checkpoints_path, f'checkpoint.pth'))
                 log_writer.write(f"checkpoint saved ! \n")
                 log_writer.flush()
