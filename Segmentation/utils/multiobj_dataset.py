@@ -8,10 +8,11 @@ import utils.custom_transforms as tr
 from torch.utils.data.sampler import Sampler
 
 class MultiobjDataset(Dataset):
-    def __init__(self, data_dir, prefix="data_FloorPlan2_"):
+    def __init__(self, data_dir, resize = None, prefix="data_FloorPlan2_"):
         super(MultiobjDataset, self).__init__()
         self.data_dir = data_dir
         self.prefix = prefix
+        self.resize = resize
         self._parse_class(data_dir, prefix)
         self._parse_file()
         
@@ -53,6 +54,10 @@ class MultiobjDataset(Dataset):
         
         _img = Image.open(img_file).convert('RGB')
         _mask = Image.open(mask_file)
+        
+        if self.resize is not None:
+            _img = _img.resize(self.resize)
+            _mask = _mask.resize(self.resize)
         
         assert _img.size == _mask.size, \
             f'Image and mask {img_file} should be the same size, but are {_img.size} and {_mask.size}'
@@ -103,20 +108,25 @@ class SameClassSampler(Sampler):
             random.shuffle(self.index_list[i])
         cls_ptr = [0] * len(self.index_list)
         unstop_list = self._unstop_list(cls_ptr)
+        ptr = 0
         while len(unstop_list) > 0:
-            i = random.choice(unstop_list)
+            if ptr % len(cls_ptr) in unstop_list:
+                i = ptr % len(cls_ptr)
+            else:
+                i = random.choice(unstop_list)
             batch = self.index_list[i][cls_ptr[i]:cls_ptr[i]+self.batch_size]
             assert len(batch) == self.batch_size
             yield batch
             cls_ptr[i] += self.batch_size
             unstop_list = self._unstop_list(cls_ptr)
+            ptr += 1
             
     def __len__(self):
         return self._len
         
         
-def Multiobj_Dataloader(data_dir, batch_size, num_workers=1, prefix="data_FloorPlan3_"):
-    ds = MultiobjDataset(data_dir=data_dir, prefix=prefix)
+def Multiobj_Dataloader(data_dir, batch_size, num_workers=1, prefix="data_FloorPlan3_", resize = None):
+    ds = MultiobjDataset(data_dir=data_dir, prefix=prefix, resize=resize)
     sampler = SameClassSampler(ds, batch_size)
     return DataLoader(ds, num_workers=num_workers, batch_sampler=sampler), ds
         

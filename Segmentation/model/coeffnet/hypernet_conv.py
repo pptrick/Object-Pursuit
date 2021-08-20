@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import collections
-from torch.nn.modules import padding
-from torch.nn.parameter import Parameter
+
 
 def init_weights_normal(m):
     if type(m) == nn.Linear:
@@ -67,37 +66,45 @@ class HypernetConvBlock(nn.Module):
         
     def _make_layers(self, init_h, init_w, H, W, Ker):
         h, w = init_h, init_w
+        old_layer = 1
+        hidden_layer = 4
         proc = []
         while H>h or W>w:
             if H>h and W>w:
                 proc.append(self._upsample((2,2)))
-                proc.append(self._ident_conv(1))
-                proc.append(nn.Tanh())
+                proc.append(self._ident_conv(old_layer, hidden_layer, kernel=3))
+                proc.append(nn.LeakyReLU())
+                old_layer = hidden_layer
+                hidden_layer *= 2
                 h *= 2
                 w *= 2
             elif H>h:
                 proc.append(self._upsample((2,1)))
-                proc.append(self._ident_conv(1))
-                proc.append(nn.Tanh())
+                proc.append(self._ident_conv(old_layer, hidden_layer, kernel=5))
+                proc.append(nn.LeakyReLU())
+                old_layer = hidden_layer
+                hidden_layer *= 2
                 h *= 2
             elif W>w:
                 proc.append(self._upsample((1,2)))
-                proc.append(self._ident_conv(1))
-                proc.append(nn.Tanh())
+                proc.append(self._ident_conv(old_layer, hidden_layer, kernel=5))
+                proc.append(nn.LeakyReLU())
+                old_layer = hidden_layer
+                hidden_layer *= 2
                 w *= 2
         
-        proc.append(self._channels_conv(1, Ker*Ker))
-        proc.append(nn.Tanh())
+        proc.append(self._channels_conv(old_layer, Ker*Ker, kernel=5))
+        proc.append(nn.LeakyReLU())
         proc.append(self._resize_conv(Ker*Ker, h-H, w-W))
         return nn.Sequential(*proc)
             
     def _upsample(self, factor=(2,2)):
         return nn.Upsample(scale_factor=factor, mode='bilinear', align_corners=True)
     
-    def _ident_conv(self, channels, kernel=3):
+    def _ident_conv(self, in_channels, out_channels, kernel=3):
         assert (kernel+1)%2 == 0
         padding_size = (int((kernel-1)/2), int((kernel-1)/2))
-        return nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=kernel, stride=1, padding=padding_size, padding_mode='zeros')
+        return nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel, stride=1, padding=padding_size, padding_mode='zeros')
     
     def _channels_conv(self, in_channels, out_channels, kernel=3):
         assert (kernel+1)%2 == 0
@@ -121,5 +128,5 @@ if __name__ == "__main__":
     z_dim = 100
     z = torch.randn(z_dim)
     block = HypernetConvBlock(z_dim, kernel_size=1, in_size=1280, out_size=256)
-    out, w, b = block(z)
-    print(out.size(), w.size(), b.size())
+    block(z)
+    # print(out.size(), w.size(), b.size())

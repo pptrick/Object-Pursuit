@@ -77,7 +77,7 @@ class Multinet(nn.Module):
         self.z_dim = z_dim
         self.device = device
         self.z = nn.Parameter(torch.randn((obj_num, z_dim)))
-        self.freeze_z_one_hot()
+        # self.freeze_z_one_hot()
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)
         
         self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)

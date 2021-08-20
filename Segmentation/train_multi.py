@@ -12,18 +12,18 @@ prefix = "data_FloorPlan2_"
 cuda = 3
 
 device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
-dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix)
-net = Multinet(obj_num=dataset.obj_num, z_dim=100, device=device)
-net.load_state_dict(
-        torch.load("./checkpoints_fc_onehot/checkpoint.pth", map_location=device)
-    )
+dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix, resize=(256, 256))
+obj_num = dataset.obj_num
+net = Multinet(obj_num=obj_num, z_dim=100, device=device)
+
 net.to(device=device)
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0003, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
+# scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=8)
 
 epochs = 100
-checkpoints_path = './checkpoints_fc_onehot'
+checkpoints_path = './checkpoints_convhyper_full'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
@@ -43,6 +43,11 @@ for epoch in range(epochs):
     step = 0
     n_size = len(dataloader)
     loss_rec = []
+    obj_loss_rec = []
+    checkpoint_rec = []
+    min_loss = 10
+    obj_step = 0
+    optimizer.zero_grad()
     with tqdm(total=n_size, desc=f'Epoch {epoch + 1}/{epochs}', unit='img') as pbar:
         for batch in dataloader:
             imgs = batch['image']
@@ -63,11 +68,20 @@ for epoch in range(epochs):
             
             pbar.set_postfix(**{'loss (batch)': loss.item()})
             loss_rec.append(loss.item())
+            obj_loss_rec.append(loss.item())
+            checkpoint_rec.append(loss.item())
             
-            optimizer.zero_grad()
+            obj_step += 1
             loss.backward()
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
-            optimizer.step()
+            
+            if obj_step == obj_num:
+                # scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
+                optimizer.step()
+                obj_step = 0
+                obj_loss_rec = []
+                optimizer.zero_grad()
+            
             pbar.update(1)
             step += 1
             
@@ -78,8 +92,11 @@ for epoch in range(epochs):
                 loss_rec = []
                 
             if step % (n_size) == 0:
-                torch.save(net.state_dict(), os.path.join(checkpoints_path, f'checkpoint.pth'))
-                log_writer.write(f"checkpoint saved ! \n")
+                if sum(checkpoint_rec)/len(checkpoint_rec) < min_loss:
+                    min_loss = sum(checkpoint_rec)/len(checkpoint_rec)
+                    torch.save(net.state_dict(), os.path.join(checkpoints_path, f'checkpoint.pth'))
+                    log_writer.write(f"checkpoint saved ! \n")
+                checkpoint_rec = []
                 log_writer.flush()
                 
 log_writer.close()

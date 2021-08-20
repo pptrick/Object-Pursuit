@@ -52,7 +52,8 @@ class Hypernet(nn.Module):
         hypernet_dict = collections.OrderedDict()
         for param in self.param_dict:
             shape = self.param_dict[param]
-            hypernet_dict[param.replace('.', '-')] = HypernetBlock(self.z_dim, kernel_size=shape[2], in_size=shape[1], out_size=shape[0])
+            hypernet_dict[param.replace('.', '-')] = HypernetConvBlock(self.z_dim, kernel_size=shape[2], in_size=shape[1], out_size=shape[0])
+            print(f"parameter num of {param} block: {sum(x.numel() for x in hypernet_dict[param.replace('.', '-')].parameters() if x.requires_grad)}")
         return nn.ModuleDict(hypernet_dict)
     
     def forward(self, z):

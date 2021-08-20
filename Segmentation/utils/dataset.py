@@ -13,17 +13,16 @@ import utils.custom_transforms as tr
 
 
 class BasicDataset(Dataset):
-    def __init__(self, imgs_dir, masks_dir, scale=1, mask_suffix='', train=False):
+    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False):
         self.imgs_dir = self._parse_dirs(imgs_dir)
         self.masks_dir = self._parse_dirs(masks_dir)
-        self.scale = scale
+        self.resize = resize
         self.mask_suffix = mask_suffix
         self.train = train
         if train:
             self.color_jitter = ColorJitter(brightness=0.3026, contrast=0.2935, sharpness=0.736, color=0.3892)
         else:
             self.color_jitter = ColorJitter()
-        assert 0 < scale <= 1, 'Scale must be between 0 and 1'
         
         self._get_ids()
         # logging.info(f'Creating dataset with {len(self.ids)} examples')
@@ -87,6 +86,10 @@ class BasicDataset(Dataset):
         
         _img = Image.open(img_file[0]).convert('RGB')
         _mask = Image.open(mask_file[0])
+        
+        if self.resize is not None:
+            _img = _img.resize(self.resize)
+            _mask = _mask.resize(self.resize)
         
         assert _img.size == _mask.size, \
             f'Image and mask {idx} should be the same size, but are {_img.size} and {_mask.size}'
