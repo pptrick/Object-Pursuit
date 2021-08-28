@@ -13,7 +13,7 @@ from tqdm import tqdm
 from eval import eval_net
 
 from torch.utils.tensorboard import SummaryWriter
-from utils.dataset import BasicDataset
+from dataset.basic_dataset import BasicDataset
 from torch.utils.data import DataLoader, random_split
 
 from model.deeplabv3.deeplab import *
@@ -22,10 +22,10 @@ from model.coeffnet.coeffnet import Coeffnet, Singlenet
 
 from loss.memory_loss import MemoryLoss
 
-obj = 'Spatula'
+obj = 'Bowl'
 dir_img = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_coeff_{obj}_test/'
+dir_checkpoint = f'checkpoints_coeff_{obj}_continual_conv/'
 
 acc = []
 
@@ -37,9 +37,10 @@ def train_net(args,
               lr=0.001,
               val_percent=0.1,
               save_cp=True,
-              img_scale=0.5):
+              img_scale=0.5,
+              use_mem_loss=True):
 
-    dataset = BasicDataset(dir_img, dir_mask, img_scale, train=True)
+    dataset = BasicDataset(dir_img, dir_mask, train=True)
     train_percent = 0.9
     val_percent = 0.1
     n_val = int(len(dataset) * val_percent)
@@ -80,9 +81,9 @@ def train_net(args,
         criterion = nn.BCEWithLogitsLoss()
         
     # Memory loss
-    if args.model == 'single':    
+    if args.model == 'singlenet' and use_mem_loss:    
         memloss = MemoryLoss(Base_dir='./Bases', device=device)
-        mem_coeff = 0.02
+        mem_coeff = 0.01
         
     max_valid_acc = 0
 
@@ -107,7 +108,7 @@ def train_net(args,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                if args.model == 'single':    
+                if args.model == 'singlenet' and use_mem_loss:    
                     loss = criterion(masks_pred, true_masks) + mem_coeff * memloss(net.hypernet)
                 else:
                     loss = criterion(masks_pred, true_masks)
@@ -164,7 +165,7 @@ def train_net(args,
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-e', '--epochs', metavar='E', type=int, default=25,
+    parser.add_argument('-e', '--epochs', metavar='E', type=int, default=100,
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
@@ -204,9 +205,12 @@ if __name__ == '__main__':
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=True)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
-        net.init_hypernet("./checkpoints_equal/checkpoint.pth")
+        path = "./checkpoints_conv_hypernet/checkpoint.pth"
+        net.init_hypernet(path, freeze=False)
+        net.init_backbone(path)
     elif args.model == "coeffnet":
-        net = Coeffnet(base_dir='./Bases', z_dim=100, device=device, hypernet_path=os.path.join(dir_checkpoint, 'Best.pth'))
+        path = "./checkpoints_conv_hypernet/checkpoint.pth"
+        net = Coeffnet(base_dir=path, z_dim=100, device=device, hypernet_path=path)
     else:
         raise NotImplementedError
     

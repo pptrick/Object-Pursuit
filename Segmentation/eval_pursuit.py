@@ -3,7 +3,7 @@ import torch
 import random
 import argparse
 from model.coeffnet.coeffnet import Singlenet
-from utils.dataset import BasicDataset
+from dataset.basic_dataset import BasicDataset
 from torch.utils.data import DataLoader, sampler
 from eval import eval_net
 
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     data_dir = args.data
     data_size = args.data_size
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
     net = Singlenet(z_dim=100, device=device)
     net.to(device=device)
     net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     # dataset
     img_dir = os.path.join(data_dir, "imgs")
     mask_dir = os.path.join(data_dir, "masks")
-    eval_dataset = BasicDataset(img_dir, mask_dir, 1)
+    eval_dataset = BasicDataset(img_dir, mask_dir)
 
     n_size = len(eval_dataset)
     indices = [i for i in range(n_size)]

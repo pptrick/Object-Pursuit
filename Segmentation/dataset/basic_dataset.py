@@ -7,9 +7,9 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 
-from utils.color_jitter import ColorJitter
+from dataset.color_jitter import ColorJitter
 from torchvision import transforms
-import utils.custom_transforms as tr 
+import dataset.custom_transforms as tr 
 
 
 class BasicDataset(Dataset):

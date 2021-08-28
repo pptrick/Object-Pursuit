@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from model.coeffnet.coeffnet import Multinet
 from loss.dice_loss import dice_coeff
-from utils.dataset import BasicDataset
+from dataset.basic_dataset import BasicDataset
 from torch.utils.data import DataLoader, sampler
 
 import torch.nn.functional as F
@@ -43,10 +43,10 @@ def eval_net(net, loader, ident, device):
     return tot / n_val
 
 if __name__ == "__main__":
-    checkpoint_path = './checkpoints_fc/checkpoint.pth'
+    checkpoint_path = './checkpoints_conv_hypernet/checkpoint.pth'
     data_path = "/data/pancy/iThor/single_obj/small_FloorPlan2"
     prefix = "data_FloorPlan2_"
-    cuda = 5
+    cuda = 0
     data_size = 400
     # obj_map = collections.OrderedDict([('Spatula', 0), ('CreditCard', 1), ('SaltShaker', 2), ('Pen', 3), ('SoapBottle', 4), ('Book', 5), ('Box', 6), ('TennisRacket', 7), ('Watch', 8), ('Towel', 9), ('TeddyBear', 10), ('Vase', 11), ('Bowl', 12), ('WateringCan', 13), ('SprayBottle', 14), ('AluminumFoil', 15), ('PepperShaker', 16), ('Apple', 17), ('Pan', 18), ('DishSponge', 19), ('Bread', 20), ('Ladle', 21), ('BasketBall', 22), ('Tomato', 23), ('AlarmClock', 24), ('Dumbbell', 25), ('SoapBar', 26), ('Cup', 27), ('Fork', 28), ('Cup2', 29), ('Mug', 30), ('ButterKnife', 31), ('Pot', 32), ('ScrubBrush', 33), ('Potato', 34), ('TissueBox', 35), ('CellPhone', 36), ('Spoon', 37), ('Candle', 38), ('Kettle', 39), ('KeyChain', 40), ('Cloth', 41), ('BaseballBat', 42), ('Newspaper', 43), ('Knife', 44), ('Plunger', 45), ('Lettuce', 46), ('Laptop', 47), ('CD', 48), ('Footstool', 49), ('Plate', 50), ('Egg', 51)]) 
     # obj_map = collections.OrderedDict([('Spatula', 0)])
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         data_dir = os.path.join(data_path, prefix+obj)
         img_dir = os.path.join(data_dir, "imgs")
         mask_dir = os.path.join(data_dir, "masks")
-        eval_dataset = BasicDataset(img_dir, mask_dir, 1)
+        eval_dataset = BasicDataset(img_dir, mask_dir)
 
         n_size = len(eval_dataset)
         indices = [i for i in range(n_size)]

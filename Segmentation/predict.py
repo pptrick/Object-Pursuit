@@ -11,7 +11,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from utils.data_vis import plot_img_and_mask
-from utils.dataset import BasicDataset
+from dataset.basic_dataset import BasicDataset
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet

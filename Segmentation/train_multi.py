@@ -5,25 +5,25 @@ from torch import optim
 from tqdm import tqdm
 
 from model.coeffnet.coeffnet import Multinet
-from utils.multiobj_dataset import Multiobj_Dataloader
+from dataset.multiobj_dataset import Multiobj_Dataloader
 
 data_path = "/data/pancy/iThor/single_obj/FloorPlan2"
 prefix = "data_FloorPlan2_"
-cuda = 3
+cuda = 2
 
 device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
-dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix, resize=(256, 256))
+dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=8, num_workers=8, prefix=prefix, resize=(256, 256))
 obj_num = dataset.obj_num
 net = Multinet(obj_num=obj_num, z_dim=100, device=device)
 
 net.to(device=device)
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0003, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
-# scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=8)
+scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
 
 epochs = 100
-checkpoints_path = './checkpoints_convhyper_full'
+checkpoints_path = './checkpoints_fc_full'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
@@ -76,7 +76,7 @@ for epoch in range(epochs):
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
             
             if obj_step == obj_num:
-                # scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
+                scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
                 optimizer.step()
                 obj_step = 0
                 obj_loss_rec = []

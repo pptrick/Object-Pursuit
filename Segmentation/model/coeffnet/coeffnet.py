@@ -34,6 +34,8 @@ class Singlenet(nn.Module):
         self.z = nn.Parameter(torch.randn(z_dim))
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)
         
+        self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
+        
     def save_z(self, file_path):
         with torch.no_grad():
             z = self.z.clone().detach()
@@ -61,11 +63,35 @@ class Singlenet(nn.Module):
         if freeze:
             for param in self.hypernet.parameters():
                 param.requires_grad = False
+                
+    def init_backbone(self, backbone_path, freeze = True):
+        if backbone_path is not None:
+            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth"))
+            state_dict = torch.load(backbone_path, map_location=self.device)
+            backbone_dict = collections.OrderedDict()
+            for param in state_dict:
+                if param.startswith("backbone."):
+                    new_param = re.match(r'backbone\.(.+)', param).group(1)
+                    backbone_dict[new_param] = state_dict[param]
+            self.backbone.load_state_dict(backbone_dict)
+        # freeze backbone
+        if freeze:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
     
     def forward(self, input):
         z = self.z
         weights = self.hypernet(z)
-        return deeplab_forward(input, weights)
+        # return deeplab_forward(input, weights)
+        
+        # backbone forward
+        x, low_level_feat = self.backbone(input)
+        # aspp forward
+        x = ASPP("aspp", x, weights, output_stride=16)
+        # decoder forward
+        x = Decoder("decoder", x, low_level_feat, weights)
+        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
+        return x
     
 
 class Multinet(nn.Module):
@@ -128,16 +154,25 @@ class Coeffnet(nn.Module):
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)
         self._init_hypernet(hypernet_path)
         
+        self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
+        self._init_backbone(hypernet_path)
+        
     def _get_z_bases(self, base_dir, device):
-        base_files = [os.path.join(base_dir, file) for file in sorted(os.listdir(base_dir)) if file.endswith(".json")]
-        print("Base files: ", base_files)
-        zs = []
-        for f in base_files:
-            z = torch.load(f, map_location=device)['z']
-            assert(z.size()[0] == self.z_dim)
-            zs.append(z)
-        base_num = len(zs)
-        return zs, base_num
+        if os.path.isdir(base_dir):
+            base_files = [os.path.join(base_dir, file) for file in sorted(os.listdir(base_dir)) if file.endswith(".json")]
+            print("Base files: ", base_files)
+            zs = []
+            for f in base_files:
+                z = torch.load(f, map_location=device)['z']
+                assert(z.size()[0] == self.z_dim)
+                zs.append(z)
+            base_num = len(zs)
+            return zs, base_num
+        elif os.path.isfile(base_dir):
+            assert(os.path.isfile(base_dir) and base_dir.endswith(".pth"))
+            zs = torch.load(base_dir, map_location=device)['z']
+            print("find base num: ", len(zs))
+            return zs, len(zs)
     
     def _linear(self, zs, coeffs):
         assert(len(zs)>0 and len(zs)==coeffs.size()[0])
@@ -162,8 +197,32 @@ class Coeffnet(nn.Module):
         # freeze hypernet
         for param in self.hypernet.parameters():
             param.requires_grad = False
+            
+    def _init_backbone(self, backbone_path, freeze = True):
+        if backbone_path is not None:
+            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth"))
+            state_dict = torch.load(backbone_path, map_location=self.device)
+            backbone_dict = collections.OrderedDict()
+            for param in state_dict:
+                if param.startswith("backbone."):
+                    new_param = re.match(r'backbone\.(.+)', param).group(1)
+                    backbone_dict[new_param] = state_dict[param]
+            self.backbone.load_state_dict(backbone_dict)
+        # freeze backbone
+        if freeze:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
     
     def forward(self, input):
         new_z = self.combine_func(self.zs, self.coeffs)
         weights = self.hypernet(new_z)
-        return deeplab_forward(input, weights)
+        # return deeplab_forward(input, weights)
+        
+        # backbone forward
+        x, low_level_feat = self.backbone(input)
+        # aspp forward
+        x = ASPP("aspp", x, weights, output_stride=16)
+        # decoder forward
+        x = Decoder("decoder", x, low_level_feat, weights)
+        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
+        return x
