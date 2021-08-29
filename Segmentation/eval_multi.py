@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print(obj_map)
 
     device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
-    net = Multinet(obj_num=len(obj_map), z_dim=100, device=device)
+    net = Multinet(obj_num=len(obj_map), z_dim=100)
     net.load_state_dict(torch.load(checkpoint_path, map_location=device))
     net.to(device=device)
 

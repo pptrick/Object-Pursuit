@@ -38,7 +38,7 @@ def train_net(args,
               val_percent=0.1,
               save_cp=True,
               img_scale=0.5,
-              use_mem_loss=True):
+              use_mem_loss=False):
 
     dataset = BasicDataset(dir_img, dir_mask, train=True)
     train_percent = 0.9
@@ -108,10 +108,7 @@ def train_net(args,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                if args.model == 'singlenet' and use_mem_loss:    
-                    loss = criterion(masks_pred, true_masks) + mem_coeff * memloss(net.hypernet)
-                else:
-                    loss = criterion(masks_pred, true_masks)
+                loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
                 count += 1
 
@@ -119,6 +116,8 @@ def train_net(args,
 
                 optimizer.zero_grad()
                 loss.backward()
+                if args.model == 'singlenet' and use_mem_loss:  
+                    loss2 = memloss(net.hypernet, mem_coeff)
                 nn.utils.clip_grad_value_(net.parameters(), 0.1)
                 optimizer.step()
 

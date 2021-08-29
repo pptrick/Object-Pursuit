@@ -29,7 +29,7 @@ def genBases(checkpoint_path, output_dir, device=torch.device('cpu'), extension=
         raise IOError
     
     # build Multinet
-    net = Multinet(obj_num=base_num, z_dim=z_dim, device=device)
+    net = Multinet(obj_num=base_num, z_dim=z_dim)
     net.load_state_dict(state_dict)
     net.to(device)
     hypernet = net.hypernet

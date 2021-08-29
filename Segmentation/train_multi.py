@@ -1,5 +1,6 @@
 import os
 import torch
+from torch._C import device
 import torch.nn as nn
 from torch import optim
 from tqdm import tqdm
@@ -7,18 +8,17 @@ from tqdm import tqdm
 from model.coeffnet.coeffnet import Multinet
 from dataset.multiobj_dataset import Multiobj_Dataloader
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "5,7"
+
 data_path = "/data/pancy/iThor/single_obj/FloorPlan2"
 prefix = "data_FloorPlan2_"
-cuda = 2
 
-device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
-dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=8, num_workers=8, prefix=prefix, resize=(256, 256))
+dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=64, num_workers=8, prefix=prefix, resize=(256, 256))
 obj_num = dataset.obj_num
-net = Multinet(obj_num=obj_num, z_dim=100, device=device)
+net = Multinet(obj_num=obj_num, z_dim=100).cuda()
+net =  nn.DataParallel(net, device_ids=[0,1])
 
-net.to(device=device)
-
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=1e-6, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
 scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
 
@@ -34,7 +34,7 @@ log_writer.write(f"obj num: {dataset.obj_num} \n"
                 f"checkpoints dir: {checkpoints_path} \n"
                 f"epochs: {epochs} \n"
                 f"data path: {data_path} \n"
-                f"cuda: {cuda} \n"
+                # f"cuda: {cuda} \n"
                 f"parameter number of the network: {sum(x.numel() for x in net.parameters() if x.requires_grad)}\n")
 
 
@@ -54,14 +54,9 @@ for epoch in range(epochs):
             true_masks = batch['mask']
             ident = batch['cls']
             
-            assert imgs.shape[1] == net.n_channels, \
-                f'Network has been defined with {net.n_channels} input channels, ' \
-                f'but loaded images have {imgs.shape[1]} channels. Please check that ' \
-                'the images are loaded correctly.'
-            
-            imgs = imgs.to(device=device, dtype=torch.float32)
-            mask_type = torch.float32 if net.n_classes == 1 else torch.long
-            true_masks = true_masks.to(device=device, dtype=mask_type)
+            imgs = imgs.to(dtype=torch.float32).cuda()
+            mask_type = torch.float32
+            true_masks = true_masks.to(dtype=mask_type).cuda()
             
             masks_pred = net(imgs, ident)
             loss = criterion(masks_pred, true_masks)
@@ -94,7 +89,7 @@ for epoch in range(epochs):
             if step % (n_size) == 0:
                 if sum(checkpoint_rec)/len(checkpoint_rec) < min_loss:
                     min_loss = sum(checkpoint_rec)/len(checkpoint_rec)
-                    torch.save(net.state_dict(), os.path.join(checkpoints_path, f'checkpoint.pth'))
+                    torch.save(net.module.state_dict(), os.path.join(checkpoints_path, f'checkpoint.pth'))
                     log_writer.write(f"checkpoint saved ! \n")
                 checkpoint_rec = []
                 log_writer.flush()

@@ -97,11 +97,10 @@ class Singlenet(nn.Module):
 class Multinet(nn.Module):
     n_channels = 3
     n_classes = 1
-    def __init__(self, obj_num, z_dim, device, param_dict=deeplab_param):
+    def __init__(self, obj_num, z_dim, param_dict=deeplab_param):
         super(Multinet, self).__init__()
         self.obj_num = obj_num
         self.z_dim = z_dim
-        self.device = device
         self.z = nn.Parameter(torch.randn((obj_num, z_dim)))
         # self.freeze_z_one_hot()
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)
