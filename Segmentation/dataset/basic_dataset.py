@@ -19,10 +19,6 @@ class BasicDataset(Dataset):
         self.resize = resize
         self.mask_suffix = mask_suffix
         self.train = train
-        if train:
-            self.color_jitter = ColorJitter(brightness=0.3026, contrast=0.2935, sharpness=0.736, color=0.3892)
-        else:
-            self.color_jitter = ColorJitter()
         
         self._get_ids()
         # logging.info(f'Creating dataset with {len(self.ids)} examples')
@@ -50,7 +46,7 @@ class BasicDataset(Dataset):
                 mask_dirs = [mask_dir] * len(idx)
                 self.ids += zip(idx, img_dirs, mask_dirs)
             else:
-                print("[Warning] can find mask dir: ", mask_dir)
+                print("[Warning] can't find mask dir: ", mask_dir)
 
     def __len__(self):
         return len(self.ids)

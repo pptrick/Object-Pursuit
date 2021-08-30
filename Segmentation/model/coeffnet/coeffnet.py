@@ -24,6 +24,14 @@ def deeplab_forward(input, weights):
     x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
     return x
 
+def deeplab_forward_no_backbone(input, x, low_level_feat, weights):
+    # aspp forward
+    out = ASPP("aspp", x, weights, output_stride=16)
+    # decoder forward
+    out = Decoder("decoder", out, low_level_feat, weights)
+    out = F.interpolate(out, size=input.size()[2:], mode='bilinear', align_corners=True)
+    return out
+
 class Singlenet(nn.Module):
     n_channels = 3
     n_classes = 1
@@ -86,12 +94,7 @@ class Singlenet(nn.Module):
         
         # backbone forward
         x, low_level_feat = self.backbone(input)
-        # aspp forward
-        x = ASPP("aspp", x, weights, output_stride=16)
-        # decoder forward
-        x = Decoder("decoder", x, low_level_feat, weights)
-        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
-        return x
+        return deeplab_forward_no_backbone(input, x, low_level_feat, weights)
     
 
 class Multinet(nn.Module):
@@ -121,12 +124,7 @@ class Multinet(nn.Module):
         
         # backbone forward
         x, low_level_feat = self.backbone(input)
-        # aspp forward
-        x = ASPP("aspp", x, weights, output_stride=16)
-        # decoder forward
-        x = Decoder("decoder", x, low_level_feat, weights)
-        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
-        return x
+        return deeplab_forward_no_backbone(input, x, low_level_feat, weights)
 
     
 class Coeffnet(nn.Module):
@@ -219,9 +217,4 @@ class Coeffnet(nn.Module):
         
         # backbone forward
         x, low_level_feat = self.backbone(input)
-        # aspp forward
-        x = ASPP("aspp", x, weights, output_stride=16)
-        # decoder forward
-        x = Decoder("decoder", x, low_level_feat, weights)
-        x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
-        return x
+        return deeplab_forward_no_backbone(input, x, low_level_feat, weights)

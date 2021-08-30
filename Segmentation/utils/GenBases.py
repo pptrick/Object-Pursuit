@@ -46,9 +46,9 @@ def genBases(checkpoint_path, output_dir, device=torch.device('cpu'), extension=
             saved_file_path = os.path.join(output_dir, f"base_{i}{extension}")
             torch.save({'z':input_z, 'weights':weights}, saved_file_path)
     except Exception:
-        return False
+        return 0
     else:
-        return True
+        return base_num
     
 if __name__ == '__main__':
     if genBases("../checkpoints_conv_hypernet/checkpoint.pth", "./Bases/"):
