@@ -25,15 +25,15 @@ class iThorDataSelector(object):
         if self.strat == "sequence":
             d, self.counter = self._sequence_next(self.counter)
             if d is None:
-                return None
+                return None, None
             ds = self._get_dataset(d)
-            return ds if ds is not None else self.next()
+            return ds, d if ds is not None else self.next()
         elif self.strat == "random":
             d, self.remain_set = self._random_next(self.remain_set)
             if d is None:
-                return None
+                return None, None
             ds = self._get_dataset(d)
-            return ds if ds is not None else self.next()
+            return ds, d if ds is not None else self.next()
         else:
             raise NotImplementedError
     

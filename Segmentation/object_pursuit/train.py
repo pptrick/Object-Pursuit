@@ -22,6 +22,15 @@ def set_train(primary_net, hypernet, backbone=None):
     hypernet.train()
     if backbone is not None:
         backbone.train()
+        
+def create_dir(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+        
+def write_log(log_file, string):
+    print(string)
+    log_file.write(string+'\n')
+    log_file.flush()
 
 def eval_net(net_type, primary_net, loader, device, hypernet, backbone=None, zs=None):
     """Evaluation without the densecrf with the dice coefficient"""
@@ -75,6 +84,9 @@ def train_net(z_dim,
               batch_size=16, 
               lr=0.0004, 
               val_percent=0.1):
+    # set logger
+    log_file = open(os.path.join(save_cp_path, "log.txt"), "w")
+
     # set network
     if net_type == "singlenet":
         primary_net = Singlenet(z_dim)
@@ -92,11 +104,6 @@ def train_net(z_dim,
     train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
-    # set checkpoint path
-    if save_cp_path is not None and isinstance(save_cp_path, str):
-        if not os.path.exists(save_cp_path):
-            os.mkdir(save_cp_path)
-    
     # optimize
     if backbone is not None:
         optim_param = filter(lambda p: p.requires_grad, itertools.chain(primary_net.parameters(), hypernet.parameters(), backbone.parameters()))
@@ -111,11 +118,29 @@ def train_net(z_dim,
         
     global_step = 0
     max_valid_acc = 0
+    
+    # write info
+    info_text = f'''Starting training:
+        net type:        {net_type}
+        Epochs:          {epochs}
+        Batch size:      {batch_size}
+        Learning rate:   {lr}
+        Training size:   {n_train}
+        Validation size: {n_val}
+        Checkpoints:     {save_cp_path}
+        Device:          {device}
+        base_dir:        {base_dir}
+        trainable parameter number of the primarynet: {sum(x.numel() for x in primary_net.parameters() if x.requires_grad)}
+        trainable parameter number of the hypernet: {sum(x.numel() for x in hypernet.parameters() if x.requires_grad)}
+        trainable parameter number of the backbone: {sum(x.numel() for x in backbone.parameters() if x.requires_grad)}
+    '''
+    write_log(log_file, info_text)
         
     # training process
     for epoch in range(epochs):
         set_train(primary_net, hypernet, backbone)
         val_list = []
+        write_log(log_file, f"Start epoch {epoch}")
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='img') as pbar:
             for batch in train_loader:
                 imgs = batch['image']
@@ -132,6 +157,8 @@ def train_net(z_dim,
                 
                 seg_loss = SegLoss(masks_pred, true_masks)
                 
+                pbar.set_postfix(**{'seg loss (batch)': seg_loss.item()})
+                
                 # optimize
                 optimizer.zero_grad()
                 seg_loss.backward()
@@ -141,19 +168,25 @@ def train_net(z_dim,
                 optimizer.step()
                 
                 pbar.update(imgs.shape[0])
-                global_step = 0
+                global_step += 1
                 
                 # eval
                 if global_step % int(n_train / (10*batch_size)) == 0:
                     val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
                     val_list.append(val_score)
-                    print('Validation Dice Coeff: {}'.format(val_score))
+                    write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss: {seg_loss}')
                     
         if save_cp_path is not None:
             avg_valid_acc = sum(val_list)/len(val_list)
             if avg_valid_acc > max_valid_acc:
-                # TODO: save checkpoints
+                if net_type == "singlenet":
+                    torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
+                elif net_type == "coeffnet":
+                    torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
                 max_valid_acc = avg_valid_acc
+                write_log(log_file, f'epoch {epoch} checkpoint saved! best validation acc: {max_valid_acc}')
+                
+    log_file.close()
             
                 
                 
