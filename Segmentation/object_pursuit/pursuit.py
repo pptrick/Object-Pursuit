@@ -42,6 +42,12 @@ def unfreeze(hypernet=None, backbone=None):
     if backbone is not None:
         for param in backbone.parameters():
             param.requires_grad = True
+            
+def should_retrain(max_val_acc):
+    if max_val_acc < 0.85:
+        return True
+    else:
+        return False
 
 def pursuit(z_dim, 
             data_dir, 
@@ -56,7 +62,7 @@ def pursuit(z_dim,
     create_dir(output_dir)
     base_dir = os.path.join(output_dir, "Bases")
     create_dir(base_dir)
-    create_dir(os.path.join(output_dir, "obj"))
+    create_dir(os.path.join(output_dir, "explored_objects"))
     log_file = open(os.path.join(output_dir, "pursuit_log.txt"), "w")
     
     # prepare bases
@@ -78,6 +84,21 @@ def pursuit(z_dim,
     # data selector
     dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize)
     
+    # pursuit info
+    pursuit_info = f'''Starting pursuing:
+        z_dim:                  {z_dim}
+        object data dir:        {data_dir}
+        output dir:             {output_dir}
+        device:                 {device}
+        pretrained hypernet:    {pretrained_hypernet}
+        pretrained backbone:    {pretrained_backbone}
+        pretrained bases:       {pretrained_bases}
+        data select strategy:   {select_strat}
+        data resize:            {resize}
+        bases dir:              {base_dir}
+    '''
+    write_log(log_file, pursuit_info)
+    
     new_obj_dataset, obj_data_dir = dataSelector.next()
     obj_counter = 0
     while new_obj_dataset is not None:
@@ -85,38 +106,55 @@ def pursuit(z_dim,
         base_num = len(zs)
         
         # for each new object, create a new dir
-        obj_dir = os.path.join(output_dir, "obj", f"obj_{obj_counter}")
+        obj_dir = os.path.join(output_dir, "explored_objects", f"obj_{obj_counter}")
         create_dir(obj_dir)
         
-        # TODO: test if a new object can be expressed by other objects
+        new_obj_info = f'''Starting new object:
+            current base num:    {base_num}
+            object data dir:     {obj_data_dir}
+            object index:        {obj_counter}
+            output obj dir:      {obj_dir}
+        '''
+        max_val_acc = 0
+        write_log(log_file, "\n===============start new object================")
+        write_log(log_file, new_obj_info)
+        
+        # test if a new object can be expressed by other objects
         if base_num > 0:
+            write_log(log_file, "start coefficient pursuit:")
             # freeze the hypernet and backbone
             freeze(hypernet=hypernet, backbone=backbone)
             coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
             create_dir(coeff_pursuit_dir)
-            train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+            write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
+            max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
                       zs=zs, 
                       net_type="coeffnet", 
                       hypernet=hypernet, 
                       backbone=backbone,
                       save_cp_path=coeff_pursuit_dir,
                       base_dir=base_dir,
-                      epochs=1)
-        # TODO: if not, train this object as a new base
-        if True: # TODO: the condition to retrain a new base
+                      max_epochs=1)
+            write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
+        # if not, train this object as a new base
+        if should_retrain(max_val_acc): # the condition to retrain a new base
+            write_log(log_file, "start to train as new base:")
             # unfreeze the backbone
             unfreeze(hypernet=hypernet)
             base_update_dir = os.path.join(obj_dir, "base_update")
             create_dir(base_update_dir)
-            train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+            write_log(log_file, f"base update result dir: {base_update_dir}")
+            max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
                       net_type="singlenet",
                       hypernet=hypernet,
                       backbone=backbone,
                       save_cp_path=base_update_dir,
                       base_dir=base_dir,
-                      epochs=1)
+                      max_epochs=1)
+            write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         new_obj_dataset, obj_data_dir = dataSelector.next()
         obj_counter += 1
+        write_log(log_file, "\n===============end object================")
         
     log_file.close()
     

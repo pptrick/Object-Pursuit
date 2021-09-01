@@ -10,20 +10,20 @@ from dataset.multiobj_dataset import Multiobj_Dataloader
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "5,7"
 
-data_path = "/data/pancy/iThor/single_obj/FloorPlan2"
+data_path = "/data/pancy/iThor/single_obj/small_FloorPlan2"
 prefix = "data_FloorPlan2_"
 
-dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=64, num_workers=8, prefix=prefix, resize=(256, 256))
+dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix, resize=(256, 256))
 obj_num = dataset.obj_num
 net = Multinet(obj_num=obj_num, z_dim=100).cuda()
-net =  nn.DataParallel(net, device_ids=[0,1])
+net =  nn.DataParallel(net, device_ids=[0])
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=1e-6, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
 scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
 
 epochs = 100
-checkpoints_path = './checkpoints_fc_full'
+checkpoints_path = './checkpoints_conv_small'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")

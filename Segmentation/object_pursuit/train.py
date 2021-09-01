@@ -80,10 +80,12 @@ def train_net(z_dim,
               zs=None, 
               save_cp_path=None, 
               base_dir=None, 
-              epochs=20, 
+              max_epochs=80, 
               batch_size=16, 
               lr=0.0004, 
-              val_percent=0.1):
+              val_percent=0.1,
+              wait_epochs=3,
+              acc_threshold=0.95):
     # set logger
     log_file = open(os.path.join(save_cp_path, "log.txt"), "w")
 
@@ -118,11 +120,12 @@ def train_net(z_dim,
         
     global_step = 0
     max_valid_acc = 0
+    stop_counter = 0
     
     # write info
     info_text = f'''Starting training:
         net type:        {net_type}
-        Epochs:          {epochs}
+        Max epochs:      {max_epochs}
         Batch size:      {batch_size}
         Learning rate:   {lr}
         Training size:   {n_train}
@@ -130,6 +133,8 @@ def train_net(z_dim,
         Checkpoints:     {save_cp_path}
         Device:          {device}
         base_dir:        {base_dir}
+        wait epochs:     {wait_epochs}
+        val acc thres:   {acc_threshold}
         trainable parameter number of the primarynet: {sum(x.numel() for x in primary_net.parameters() if x.requires_grad)}
         trainable parameter number of the hypernet: {sum(x.numel() for x in hypernet.parameters() if x.requires_grad)}
         trainable parameter number of the backbone: {sum(x.numel() for x in backbone.parameters() if x.requires_grad)}
@@ -137,11 +142,11 @@ def train_net(z_dim,
     write_log(log_file, info_text)
         
     # training process
-    for epoch in range(epochs):
+    for epoch in range(max_epochs):
         set_train(primary_net, hypernet, backbone)
         val_list = []
         write_log(log_file, f"Start epoch {epoch}")
-        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='img') as pbar:
+        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{max_epochs}', unit='img') as pbar:
             for batch in train_loader:
                 imgs = batch['image']
                 true_masks = batch['mask']
@@ -181,12 +186,25 @@ def train_net(z_dim,
             if avg_valid_acc > max_valid_acc:
                 if net_type == "singlenet":
                     torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
+                    primary_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
                 elif net_type == "coeffnet":
                     torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
                 max_valid_acc = avg_valid_acc
+                stop_counter = 0
                 write_log(log_file, f'epoch {epoch} checkpoint saved! best validation acc: {max_valid_acc}')
-                
+            else:
+                stop_counter += 1
+        
+            if stop_counter >= wait_epochs or max_valid_acc > acc_threshold:
+                # stop procedure
+                write_log(log_file, f'training stopped at epoch {epoch}')
+                log_file.close()
+                return max_valid_acc
+    
+    #stop procedure
+    write_log(log_file, f'training stopped')
     log_file.close()
+    return max_valid_acc
             
                 
                 
