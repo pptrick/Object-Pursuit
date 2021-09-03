@@ -43,7 +43,7 @@ def eval_net(net, loader, ident, device):
     return tot / n_val
 
 if __name__ == "__main__":
-    checkpoint_path = './checkpoints_conv_hypernet/checkpoint.pth'
+    checkpoint_path = './checkpoints_conv_small/checkpoint.pth'
     data_path = "/data/pancy/iThor/single_obj/small_FloorPlan2"
     prefix = "data_FloorPlan2_"
     cuda = 0
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         data_dir = os.path.join(data_path, prefix+obj)
         img_dir = os.path.join(data_dir, "imgs")
         mask_dir = os.path.join(data_dir, "masks")
-        eval_dataset = BasicDataset(img_dir, mask_dir)
+        eval_dataset = BasicDataset(img_dir, mask_dir, (256, 256))
 
         n_size = len(eval_dataset)
         indices = [i for i in range(n_size)]

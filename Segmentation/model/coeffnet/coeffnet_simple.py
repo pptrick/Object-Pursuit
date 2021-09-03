@@ -17,6 +17,8 @@ def init_backbone(model_path, backbone, device, freeze=False):
             if param.startswith("backbone."):
                 new_param = re.match(r'backbone\.(.+)', param).group(1)
                 backbone_dict['module.'+new_param] = state_dict[param]
+            elif param.startswith("module."):
+                backbone_dict[param] = state_dict[param]
         if len(backbone_dict) > 0:
             backbone.load_state_dict(backbone_dict)
     # freeze backbone

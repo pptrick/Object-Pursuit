@@ -18,11 +18,11 @@ obj_num = dataset.obj_num
 net = Multinet(obj_num=obj_num, z_dim=100).cuda()
 net =  nn.DataParallel(net, device_ids=[0])
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0004, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=5e-5, weight_decay=1e-7, momentum=0.9)
 criterion = nn.BCEWithLogitsLoss()
-scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
+# scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
 
-epochs = 100
+epochs = 200
 checkpoints_path = './checkpoints_conv_small'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
@@ -71,7 +71,7 @@ for epoch in range(epochs):
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
             
             if obj_step == obj_num:
-                scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
+                # scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
                 optimizer.step()
                 obj_step = 0
                 obj_loss_rec = []

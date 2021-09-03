@@ -32,7 +32,9 @@ if __name__ == "__main__":
     device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
     net = Singlenet(z_dim=100, device=device)
     net.to(device=device)
-    net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
+    # net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
+    net.init_hypernet('./checkpoints_objectpursuit_test/checkpoint/hypernet.pth')
+    net.init_backbone('./checkpoints_objectpursuit_test/checkpoint/backbone.pth')
     net.load_z(z_path)
     print(f"load hypernet param from {hypernet_param_path} \n"
           f"load z from {z_path} \n"

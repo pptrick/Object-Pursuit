@@ -63,6 +63,8 @@ def pursuit(z_dim,
     base_dir = os.path.join(output_dir, "Bases")
     create_dir(base_dir)
     create_dir(os.path.join(output_dir, "explored_objects"))
+    checkpoint_dir = os.path.join(output_dir, "checkpoint")
+    create_dir(checkpoint_dir)
     log_file = open(os.path.join(output_dir, "pursuit_log.txt"), "w")
     
     # prepare bases
@@ -134,7 +136,8 @@ def pursuit(z_dim,
                       backbone=backbone,
                       save_cp_path=coeff_pursuit_dir,
                       base_dir=base_dir,
-                      max_epochs=1)
+                      max_epochs=80,
+                      lr=8e-5)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         # if not, train this object as a new base
         if should_retrain(max_val_acc): # the condition to retrain a new base
@@ -150,10 +153,14 @@ def pursuit(z_dim,
                       backbone=backbone,
                       save_cp_path=base_update_dir,
                       base_dir=base_dir,
-                      max_epochs=1)
+                      max_epochs=80,
+                      lr=8e-5)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         new_obj_dataset, obj_data_dir = dataSelector.next()
         obj_counter += 1
+        # save checkpoint
+        torch.save(hypernet.state_dict(), os.path.join(checkpoint_dir, f'hypernet.pth'))
+        torch.save(backbone.state_dict(), os.path.join(checkpoint_dir, f'backbone.pth'))
         write_log(log_file, "\n===============end object================")
         
     log_file.close()

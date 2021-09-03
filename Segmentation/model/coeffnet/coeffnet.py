@@ -81,6 +81,9 @@ class Singlenet(nn.Module):
                 if param.startswith("backbone."):
                     new_param = re.match(r'backbone\.(.+)', param).group(1)
                     backbone_dict[new_param] = state_dict[param]
+                elif param.startswith("module."):
+                    new_param = re.match(r'module\.(.+)', param).group(1)
+                    backbone_dict[new_param] = state_dict[param]
             self.backbone.load_state_dict(backbone_dict)
         # freeze backbone
         if freeze:
@@ -203,6 +206,9 @@ class Coeffnet(nn.Module):
             for param in state_dict:
                 if param.startswith("backbone."):
                     new_param = re.match(r'backbone\.(.+)', param).group(1)
+                    backbone_dict[new_param] = state_dict[param]
+                elif param.startswith("module."):
+                    new_param = re.match(r'module\.(.+)', param).group(1)
                     backbone_dict[new_param] = state_dict[param]
             self.backbone.load_state_dict(backbone_dict)
         # freeze backbone
