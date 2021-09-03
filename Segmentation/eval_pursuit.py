@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # dataset
     img_dir = os.path.join(data_dir, "imgs")
     mask_dir = os.path.join(data_dir, "masks")
-    eval_dataset = BasicDataset(img_dir, mask_dir)
+    eval_dataset = BasicDataset(img_dir, mask_dir, (256, 256))
 
     n_size = len(eval_dataset)
     indices = [i for i in range(n_size)]
