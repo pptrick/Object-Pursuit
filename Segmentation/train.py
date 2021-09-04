@@ -14,7 +14,8 @@ from eval import eval_net
 
 from torch.utils.tensorboard import SummaryWriter
 from dataset.basic_dataset import BasicDataset
-from torch.utils.data import DataLoader, random_split
+from dataset.davis_dataset import DavisDataset
+from torch.utils.data import DataLoader, dataset, random_split
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
@@ -25,7 +26,7 @@ from loss.memory_loss import MemoryLoss
 obj = 'Bowl'
 dir_img = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_coeff_{obj}_continual_conv/'
+dir_checkpoint = f'checkpoints_davis_blackswan_coeff'
 
 acc = []
 
@@ -36,20 +37,26 @@ def train_net(args,
               batch_size=1,
               lr=0.001,
               val_percent=0.1,
-              save_cp=True,
+              save_cp=False,
               img_scale=0.5,
               use_mem_loss=False):
 
-    dataset = BasicDataset(dir_img, dir_mask, train=True)
-    train_percent = 0.9
-    val_percent = 0.1
-    n_val = int(len(dataset) * val_percent)
-    n_train = int(len(dataset) * train_percent)
-    n_test = len(dataset) - n_train - n_val
-    train, val, _ = random_split(dataset, [n_train, n_val, n_test])
-    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
-
+    # dataset = BasicDataset(dir_img, dir_mask, train=True)
+    # train_percent = 0.9
+    # val_percent = 0.1
+    # n_val = int(len(dataset) * val_percent)
+    # n_train = int(len(dataset) * train_percent)
+    # n_test = len(dataset) - n_train - n_val
+    # train, val, _ = random_split(dataset, [n_train, n_val, n_test])
+    # train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    # val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    
+    dataset = DavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', 'blackswan', resize=(256, 256))
+    n_train = len(dataset)
+    n_val = len(dataset)
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    
     if not os.path.exists(dir_checkpoint):
         os.mkdir(dir_checkpoint)
     log_writer = open(os.path.join(dir_checkpoint, "log.txt"), "w")
@@ -123,7 +130,7 @@ def train_net(args,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
-                if global_step % int(n_train / (10*batch_size)) == 0:
+                if global_step % int(n_train / (0.05*batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
                     val_score, _ = eval_net(net, val_loader, device)
@@ -153,7 +160,7 @@ def train_net(args,
             if avg_valid_acc > max_valid_acc:
                 if args.model == 'singlenet':    
                     torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
-                    net.save_z(f'./Bases/{obj}.json')
+                    # net.save_z(f'./Bases/{obj}.json')
                 max_valid_acc = avg_valid_acc
                 log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}, current loss {epoch_loss/count}\n')
                 logging.info(f'Checkpoint {epoch + 1} saved !')
@@ -204,11 +211,11 @@ if __name__ == '__main__':
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=True)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
-        path = "./checkpoints_conv_hypernet/checkpoint.pth"
-        net.init_hypernet(path, freeze=False)
+        path = "./checkpoints_conv_small/checkpoint.pth"
+        net.init_hypernet(path, freeze=True)
         net.init_backbone(path)
     elif args.model == "coeffnet":
-        path = "./checkpoints_conv_hypernet/checkpoint.pth"
+        path = "./checkpoints_conv_small/checkpoint.pth"
         net = Coeffnet(base_dir=path, z_dim=100, device=device, hypernet_path=path)
     else:
         raise NotImplementedError

@@ -14,8 +14,8 @@ class DavisDataset(Dataset):
         self.imgs_dir, self.masks_dir, self.objects = self._check_dir(dataset_dir, obj)
         self.id_list = self._get_ids(self.imgs_dir, self.masks_dir)
         
-        
-    def _check_dir(self, ds_dir, obj):
+    @classmethod
+    def get_obj_list(self, ds_dir):
         assert os.path.isdir(ds_dir)
         sub_dirs = os.listdir(ds_dir)
         assert 'JPEGImages' in sub_dirs and 'Annotations' in sub_dirs
@@ -26,6 +26,11 @@ class DavisDataset(Dataset):
         mask_dir = os.path.join(mask_dir, res)
         obj_in_img = os.listdir(img_dir)
         obj_in_mask = os.listdir(mask_dir)
+        assert len(obj_in_img) == len(obj_in_mask)
+        return obj_in_img, obj_in_mask, img_dir, mask_dir
+        
+    def _check_dir(self, ds_dir, obj):
+        obj_in_img, obj_in_mask, img_dir, mask_dir = DavisDataset.get_obj_list(ds_dir)
         assert (obj in obj_in_img) and (obj in obj_in_mask)
         img_dir = os.path.join(img_dir, obj)
         mask_dir = os.path.join(mask_dir, obj)
@@ -72,13 +77,19 @@ class DavisDataset(Dataset):
         mask = np.array(_mask).astype(np.float32)
         mask = mask == 1
         
-        return img, mask
+        return img, mask, img_file, mask_file
         
     def __getitem__(self, index):
-        img, mask = self._make_img_gt_point_pair(index)
+        img, mask, img_file, mask_file = self._make_img_gt_point_pair(index)
         sample = {'image': img, 'mask': mask}
         sample = self.transform_tr(sample)
+        
+        sample['img_file'] = img_file
+        sample['mask_file'] = mask_file
         return sample
+    
+    def __len__(self):
+        return len(self.id_list)
         
     def transform_tr(self, sample):
         composed_transforms = transforms.Compose([
