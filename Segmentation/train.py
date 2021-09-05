@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import optim
 from torch.nn.modules import loss
 from tqdm import tqdm
@@ -14,19 +15,20 @@ from eval import eval_net
 
 from torch.utils.tensorboard import SummaryWriter
 from dataset.basic_dataset import BasicDataset
-from dataset.davis_dataset import DavisDataset
+from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
 from torch.utils.data import DataLoader, dataset, random_split
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
 from model.coeffnet.coeffnet import Coeffnet, Singlenet
+from utils.pos_weight import get_pos_weight_from_batch
 
 from loss.memory_loss import MemoryLoss
 
-obj = 'Bowl'
+obj = 'bus'
 dir_img = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_davis_blackswan_coeff'
+dir_checkpoint = f'checkpoints_davis_{obj}_coeff_oneshot'
 
 acc = []
 
@@ -51,11 +53,13 @@ def train_net(args,
     # train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     # val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
-    dataset = DavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', 'blackswan', resize=(256, 256))
-    n_train = len(dataset)
-    n_val = len(dataset)
-    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    oneshot_dataset = OneshotDavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj, resize=(256, 256))
+    # oneshot_dataset = DavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj, resize=(256, 256))
+    norm_dataset = DavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj, resize=(256, 256))
+    n_train = len(oneshot_dataset)
+    n_val = len(norm_dataset)
+    train_loader = DataLoader(oneshot_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    val_loader = DataLoader(norm_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
     if not os.path.exists(dir_checkpoint):
         os.mkdir(dir_checkpoint)
@@ -82,10 +86,10 @@ def train_net(args,
     optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-7, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
     
-    if net.n_classes > 1:
-        criterion = nn.CrossEntropyLoss()
-    else:
-        criterion = nn.BCEWithLogitsLoss()
+    # if net.n_classes > 1:
+    #     criterion = nn.CrossEntropyLoss()
+    # else:
+    #     criterion = nn.BCEWithLogitsLoss()
         
     # Memory loss
     if args.model == 'singlenet' and use_mem_loss:    
@@ -115,7 +119,8 @@ def train_net(args,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
-                loss = criterion(masks_pred, true_masks)
+                # loss = criterion(masks_pred, true_masks)
+                loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
                 epoch_loss += loss.item()
                 count += 1
 
@@ -211,11 +216,11 @@ if __name__ == '__main__':
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=True)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
-        path = "./checkpoints_conv_small/checkpoint.pth"
+        path = "./checkpoints_conv_small_full/checkpoint.pth"
         net.init_hypernet(path, freeze=True)
         net.init_backbone(path)
     elif args.model == "coeffnet":
-        path = "./checkpoints_conv_small/checkpoint.pth"
+        path = "./checkpoints_conv_small_full/checkpoint.pth"
         net = Coeffnet(base_dir=path, z_dim=100, device=device, hypernet_path=path)
     else:
         raise NotImplementedError

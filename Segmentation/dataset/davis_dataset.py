@@ -1,9 +1,10 @@
 import os
 import numpy as np
 import random
-from PIL import Image
+from PIL import Image, ImageOps
 from torch.utils.data import Dataset
 from torchvision import transforms
+from dataset.color_jitter import ColorJitter
 import dataset.custom_transforms as tr 
 
 class DavisDataset(Dataset):
@@ -13,6 +14,8 @@ class DavisDataset(Dataset):
         self.resize = resize
         self.imgs_dir, self.masks_dir, self.objects = self._check_dir(dataset_dir, obj)
         self.id_list = self._get_ids(self.imgs_dir, self.masks_dir)
+        #augmentation
+        self.cj = ColorJitter(brightness=0.1, contrast=0.1, sharpness=0.1, color=0.1)
         
     @classmethod
     def get_obj_list(self, ds_dir):
@@ -58,6 +61,23 @@ class DavisDataset(Dataset):
             mask = mask.crop([0, bias, length, bias+length])
         return img, mask
     
+    def _augment(self, img, mask):
+        img_size = img.size
+        # color jitter
+        img = self.cj(img)
+        # img flip
+        if random.random()<0.4:
+            img = ImageOps.mirror(img)
+            mask = ImageOps.mirror(mask)
+        # random crop
+        # crop_rate = 0.3
+        # delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
+        # delta_w, delta_h = random.randint(0, delta_W), random.randint(0, delta_H)
+        # delta_x, delta_y = random.randint(0, delta_w), random.randint(0, delta_h)
+        # img = img.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
+        # mask = mask.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
+        return img, mask
+    
     def _make_img_gt_point_pair(self, index, random_crop=True):
         img_file, mask_file = self.id_list[index]
         _img = Image.open(img_file).convert('RGB')
@@ -97,8 +117,43 @@ class DavisDataset(Dataset):
             tr.ImgNorm(),
             tr.ToTensor()])
         return composed_transforms(sample)
+    
+    
+class OneshotDavisDataset(DavisDataset):
+    def __init__(self, dataset_dir, obj, index=0, dataset_len=32, resize=None):
+        super().__init__(dataset_dir, obj, resize=resize)
+        assert index < len(self.id_list)
+        self.target_img_file, self.target_mask_file = self.id_list[index]
+        self.dataset_len = dataset_len
+        
+    def _make_img_gt_point_pair(self, index, random_crop=True):
+        _img = Image.open(self.target_img_file).convert('RGB')
+        _mask = Image.open(self.target_mask_file)
+        
+        assert _img.size == _mask.size, \
+            f'Image and mask {index} should be the same size, but are {_img.size} and {_mask.size}'
+            
+        if random_crop:
+            _img, _mask = self._random_crop(_img, _mask)
+            
+        _img, _mask = self._augment(_img, _mask)
+            
+        if self.resize is not None:
+            _img = _img.resize(self.resize)
+            _mask = _mask.resize(self.resize)
+            
+        img = np.array(_img).astype(np.float32)
+        mask = np.array(_mask).astype(np.float32)
+        mask = mask == 1
+        
+        return img, mask, self.target_img_file, self.target_mask_file
+    
+    def __len__(self):
+        return self.dataset_len
+        
+    
         
     
 if __name__ == "__main__":
-    ds = DavisDataset(dataset_dir='/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj='bmx-bumps', resize=(256, 256))
+    ds = OneshotDavisDataset(dataset_dir='/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj='bus', resize=(256, 256))
     ds[0]
