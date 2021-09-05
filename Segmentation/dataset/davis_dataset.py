@@ -4,8 +4,8 @@ import random
 from PIL import Image, ImageOps
 from torch.utils.data import Dataset
 from torchvision import transforms
-from color_jitter import ColorJitter
-import custom_transforms as tr 
+from dataset.color_jitter import ColorJitter
+import dataset.custom_transforms as tr 
 
 class DavisDataset(Dataset):
     def __init__(self, dataset_dir, obj, resize=None):
@@ -15,7 +15,7 @@ class DavisDataset(Dataset):
         self.imgs_dir, self.masks_dir, self.objects = self._check_dir(dataset_dir, obj)
         self.id_list = self._get_ids(self.imgs_dir, self.masks_dir)
         #augmentation
-        self.cj = ColorJitter(brightness=0.1, contrast=0.2, sharpness=0.15, color=0.15)
+        self.cj = ColorJitter(brightness=0.1, contrast=0.1, sharpness=0.1, color=0.1)
         
     @classmethod
     def get_obj_list(self, ds_dir):
@@ -70,12 +70,12 @@ class DavisDataset(Dataset):
             img = ImageOps.mirror(img)
             mask = ImageOps.mirror(mask)
         # random crop
-        crop_rate = 0.3
-        delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
-        delta_w, delta_h = random.randint(0, delta_W), random.randint(0, delta_H)
-        delta_x, delta_y = random.randint(0, delta_w), random.randint(0, delta_h)
-        img = img.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
-        mask = mask.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
+        # crop_rate = 0.3
+        # delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
+        # delta_w, delta_h = random.randint(0, delta_W), random.randint(0, delta_H)
+        # delta_x, delta_y = random.randint(0, delta_w), random.randint(0, delta_h)
+        # img = img.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
+        # mask = mask.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
         return img, mask
     
     def _make_img_gt_point_pair(self, index, random_crop=True):
@@ -141,9 +141,6 @@ class OneshotDavisDataset(DavisDataset):
         if self.resize is not None:
             _img = _img.resize(self.resize)
             _mask = _mask.resize(self.resize)
-            
-        _img.save("test_img.jpg")
-        _mask.save("test_mask.png")
             
         img = np.array(_img).astype(np.float32)
         mask = np.array(_mask).astype(np.float32)
