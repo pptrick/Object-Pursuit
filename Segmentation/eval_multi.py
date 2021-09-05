@@ -43,14 +43,15 @@ def eval_net(net, loader, ident, device):
     return tot / n_val
 
 if __name__ == "__main__":
-    checkpoint_path = './checkpoints_conv_small/checkpoint.pth'
-    data_path = "/data/pancy/iThor/single_obj/small_FloorPlan2"
+    checkpoint_path = './checkpoints_conv_small_full_lr=4e-5_single_opt/checkpoint.pth'
+    data_path = "/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2"
     prefix = "data_FloorPlan2_"
     cuda = 0
     data_size = 400
+    obj_map = collections.OrderedDict([('SprayBottle', 0), ('Cup', 1), ('Vase', 2), ('BasketBall', 3), ('TennisRacket', 4), ('Laptop', 5), ('Ladle', 6), ('SoapBar', 7), ('WateringCan', 8), ('Bread', 9), ('Box', 10), ('Plate', 11), ('Bowl', 12), ('Book', 13), ('Kettle', 14), ('Egg', 15), ('PepperShaker', 16), ('Potato', 17), ('Pan', 18), ('TeddyBear', 19), ('Pot', 20), ('Spatula', 21), ('Plunger', 22), ('Knife', 23), ('CD', 24), ('KeyChain', 25), ('AluminumFoil', 26), ('Fork', 27), ('CellPhone', 28), ('Pen', 29), ('TissueBox', 30), ('DishSponge', 31), ('BaseballBat', 32), ('Dumbbell', 33), ('SaltShaker', 34), ('Footstool', 35), ('Mug', 36), ('Apple', 37), ('AlarmClock', 38), ('Cup2', 39), ('CreditCard', 40), ('Candle', 41), ('ScrubBrush', 42), ('Cloth', 43), ('Newspaper', 44), ('Towel', 45), ('Spoon', 46), ('SoapBottle', 47), ('ButterKnife', 48), ('Lettuce', 49), ('Tomato', 50), ('Watch', 51)]) 
     # obj_map = collections.OrderedDict([('Spatula', 0), ('CreditCard', 1), ('SaltShaker', 2), ('Pen', 3), ('SoapBottle', 4), ('Book', 5), ('Box', 6), ('TennisRacket', 7), ('Watch', 8), ('Towel', 9), ('TeddyBear', 10), ('Vase', 11), ('Bowl', 12), ('WateringCan', 13), ('SprayBottle', 14), ('AluminumFoil', 15), ('PepperShaker', 16), ('Apple', 17), ('Pan', 18), ('DishSponge', 19), ('Bread', 20), ('Ladle', 21), ('BasketBall', 22), ('Tomato', 23), ('AlarmClock', 24), ('Dumbbell', 25), ('SoapBar', 26), ('Cup', 27), ('Fork', 28), ('Cup2', 29), ('Mug', 30), ('ButterKnife', 31), ('Pot', 32), ('ScrubBrush', 33), ('Potato', 34), ('TissueBox', 35), ('CellPhone', 36), ('Spoon', 37), ('Candle', 38), ('Kettle', 39), ('KeyChain', 40), ('Cloth', 41), ('BaseballBat', 42), ('Newspaper', 43), ('Knife', 44), ('Plunger', 45), ('Lettuce', 46), ('Laptop', 47), ('CD', 48), ('Footstool', 49), ('Plate', 50), ('Egg', 51)]) 
     # obj_map = collections.OrderedDict([('Spatula', 0)])
-    obj_map = collections.OrderedDict([('Spatula', 0), ('Vase', 1), ('PepperShaker', 2), ('Pan', 3), ('AlarmClock', 4), ('Cup', 5), ('ButterKnife', 6), ('Kettle', 7), ('KeyChain', 8), ('Newspaper', 9), ('Laptop', 10), ('CD', 11), ('Plate', 12)])
+    # obj_map = collections.OrderedDict([('Spatula', 0), ('Vase', 1), ('PepperShaker', 2), ('Pan', 3), ('AlarmClock', 4), ('Cup', 5), ('ButterKnife', 6), ('Kettle', 7), ('KeyChain', 8), ('Newspaper', 9), ('Laptop', 10), ('CD', 11), ('Plate', 12)])
     
     print(obj_map)
 

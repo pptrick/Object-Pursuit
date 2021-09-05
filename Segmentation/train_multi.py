@@ -1,16 +1,17 @@
 import os
 import torch
-from torch._C import device
 import torch.nn as nn
 from torch import optim
 from tqdm import tqdm
+import torch.nn.functional as F
 
 from model.coeffnet.coeffnet import Multinet
 from dataset.multiobj_dataset import Multiobj_Dataloader
+from utils.pos_weight import get_pos_weight_from_batch
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "5,7"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-data_path = "/data/pancy/iThor/single_obj/small_FloorPlan2"
+data_path = "/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2"
 prefix = "data_FloorPlan2_"
 
 dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix, resize=(256, 256))
@@ -18,12 +19,13 @@ obj_num = dataset.obj_num
 net = Multinet(obj_num=obj_num, z_dim=100).cuda()
 net =  nn.DataParallel(net, device_ids=[0])
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=5e-5, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=4e-5, weight_decay=1e-7, momentum=0.9)
+
 criterion = nn.BCEWithLogitsLoss()
 # scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
 
 epochs = 200
-checkpoints_path = './checkpoints_conv_small'
+checkpoints_path = './checkpoints_conv_small_full_lr=4e-5_single_opt'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
@@ -59,7 +61,9 @@ for epoch in range(epochs):
             true_masks = true_masks.to(dtype=mask_type).cuda()
             
             masks_pred = net(imgs, ident)
-            loss = criterion(masks_pred, true_masks)
+            # loss = criterion(masks_pred, true_masks)
+            pos_weight = get_pos_weight_from_batch(true_masks)
+            loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([pos_weight]).cuda())
             
             pbar.set_postfix(**{'loss (batch)': loss.item()})
             loss_rec.append(loss.item())
@@ -70,7 +74,7 @@ for epoch in range(epochs):
             loss.backward()
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
             
-            if obj_step == obj_num:
+            if obj_step == 1:
                 # scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
                 optimizer.step()
                 obj_step = 0

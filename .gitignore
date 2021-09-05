@@ -143,6 +143,8 @@ xorg.log*
 
 # bash
 *.sh
+/run
+*.out
 
 # data
 /BaseAnalyze/Bases

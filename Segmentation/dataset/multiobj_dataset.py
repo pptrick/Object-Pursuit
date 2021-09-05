@@ -39,8 +39,8 @@ class MultiobjDataset(Dataset):
             img_dir = os.path.join(cls_dir, 'imgs')
             mask_dir = os.path.join(cls_dir, 'masks')
             cls = os.path.basename(cls_dir)[len(self.prefix):]
-            self.img_files += [os.path.join(img_dir, f) for f in os.listdir(img_dir) if (f.endswith(".png") or f.endswith(".jpg"))]
-            self.mask_files += [os.path.join(mask_dir, f) for f in os.listdir(mask_dir) if (f.endswith(".png") or f.endswith(".jpg"))]
+            self.img_files += [os.path.join(img_dir, f) for f in sorted(os.listdir(img_dir)) if (f.endswith(".png") or f.endswith(".jpg"))]
+            self.mask_files += [os.path.join(mask_dir, f) for f in sorted(os.listdir(mask_dir)) if (f.endswith(".png") or f.endswith(".jpg"))]
             self.cls_list += [self.classes[cls]]*len(os.listdir(img_dir))
             assert len(self.img_files) == len(self.mask_files) and len(self.cls_list) == len(self.mask_files)
             self.index_list.append(list(range(ptr, len(self.cls_list))))
@@ -50,7 +50,8 @@ class MultiobjDataset(Dataset):
         mask_file = self.mask_files[index]
         img_file = self.img_files[index]
         
-        assert os.path.basename(img_file) == os.path.basename(mask_file)
+        assert os.path.basename(img_file) == os.path.basename(mask_file), \
+            f"different basenames: {img_file}, {mask_file}"
         
         _img = Image.open(img_file).convert('RGB')
         _mask = Image.open(mask_file)
