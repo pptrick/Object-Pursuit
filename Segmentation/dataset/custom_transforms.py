@@ -48,6 +48,9 @@ class MaskExpand(object):
         img = np.array(img).astype(np.float32)
         mask = np.array(mask).astype(np.float32)
         #expand
+        if len(mask.shape) == 3:
+            print("warning, find a 3-dim mask")
+            mask = mask[:,:,0]
         if len(mask.shape) == 2:
             mask = np.expand_dims(mask, axis=2)
         mask = mask.transpose((2,0,1))

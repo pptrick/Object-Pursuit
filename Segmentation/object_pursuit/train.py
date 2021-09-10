@@ -3,13 +3,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import itertools
-from tqdm import tqdm
+from tqdm import tqdm, utils
 from torch.utils.data import DataLoader, random_split
 from torch import optim
 
 from model.coeffnet.coeffnet_simple import Singlenet, Coeffnet
 from loss.dice_loss import dice_coeff
 from loss.memory_loss import MemoryLoss
+from utils.pos_weight import get_pos_weight_from_batch
 
 def set_eval(primary_net, hypernet, backbone=None):
     primary_net.eval()
@@ -100,11 +101,15 @@ def train_net(z_dim,
     primary_net.to(device)
     
     # set dataset and dataloader
-    n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train, val = random_split(dataset, [n_train, n_val])
-    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    # n_val = int(len(dataset) * val_percent)
+    # n_train = len(dataset) - n_val
+    # train, val = random_split(dataset, [n_train, n_val])
+    # train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    # val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    n_train = len(dataset)
+    n_val = len(dataset)
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
     # optimize
     if backbone is not None:
@@ -112,8 +117,9 @@ def train_net(z_dim,
     else:
         optim_param = filter(lambda p: p.requires_grad, itertools.chain(primary_net.parameters(), hypernet.parameters()))
     optimizer = optim.RMSprop(optim_param, lr=lr, weight_decay=1e-7, momentum=0.9)
+    optimizer = nn.DataParallel(optimizer, device_ids=[0, 1, 2])
     
-    SegLoss = nn.BCEWithLogitsLoss()
+    # SegLoss = nn.BCEWithLogitsLoss()
     if net_type == "singlenet":
         MemLoss = MemoryLoss(Base_dir=base_dir, device=device)
         mem_coeff = 0.01
@@ -160,7 +166,7 @@ def train_net(z_dim,
                 else:
                     raise NotImplementedError
                 
-                seg_loss = SegLoss(masks_pred, true_masks)
+                seg_loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
                 
                 pbar.set_postfix(**{'seg loss (batch)': seg_loss.item()})
                 
@@ -168,38 +174,40 @@ def train_net(z_dim,
                 optimizer.zero_grad()
                 seg_loss.backward()
                 if net_type == "singlenet":
-                    MemLoss(hypernet, mem_coeff)
+                    mem_loss = MemLoss(hypernet, mem_coeff)
+                    # mem_loss.backward()
                 nn.utils.clip_grad_value_(optim_param, 0.1)
-                optimizer.step()
+                optimizer.module.step()
                 
                 pbar.update(imgs.shape[0])
                 global_step += 1
                 
                 # eval
-                if global_step % int(n_train / (10*batch_size)) == 0:
+                if global_step % int(n_train / (0.05*batch_size)) == 0:
                     val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
                     val_list.append(val_score)
                     write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss: {seg_loss}')
                     
         if save_cp_path is not None:
-            avg_valid_acc = sum(val_list)/len(val_list)
-            if avg_valid_acc > max_valid_acc:
-                if net_type == "singlenet":
-                    torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
-                    primary_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
-                elif net_type == "coeffnet":
-                    torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
-                max_valid_acc = avg_valid_acc
-                stop_counter = 0
-                write_log(log_file, f'epoch {epoch} checkpoint saved! best validation acc: {max_valid_acc}')
-            else:
-                stop_counter += 1
-        
-            if stop_counter >= wait_epochs or max_valid_acc > acc_threshold:
-                # stop procedure
-                write_log(log_file, f'training stopped at epoch {epoch}')
-                log_file.close()
-                return max_valid_acc
+            if len(val_list) > 0:
+                avg_valid_acc = sum(val_list)/len(val_list)
+                if avg_valid_acc > max_valid_acc:
+                    if net_type == "singlenet":
+                        torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
+                        primary_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
+                    elif net_type == "coeffnet":
+                        torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
+                    max_valid_acc = avg_valid_acc
+                    stop_counter = 0
+                    write_log(log_file, f'epoch {epoch} checkpoint saved! best validation acc: {max_valid_acc}')
+                else:
+                    stop_counter += 1
+                
+                if stop_counter >= wait_epochs or max_valid_acc > acc_threshold:
+                    # stop procedure
+                    write_log(log_file, f'training stopped at epoch {epoch}')
+                    log_file.close()
+                    return max_valid_acc
     
     #stop procedure
     write_log(log_file, f'training stopped')

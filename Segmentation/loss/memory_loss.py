@@ -1,4 +1,5 @@
 import os
+import random
 import torch
 import torch.nn as nn
 
@@ -33,6 +34,12 @@ class MemoryLoss(nn.Module):
             
     def forward(self, hypernet, mem_coeff):
         loss = None
+        # TODO: consider change loss cal to randomly/sequential choice
+        # index_list = range(len(self.z))
+        # i = random.choice(index_list)
+        # pred_w = hypernet(self.z[i])
+        # gt_w = self.weights[i]
+        # loss = mem_coeff * self._l2_loss(pred_w, gt_w)
         for i in range(len(self.z)):
             pred_w = hypernet(self.z[i])
             gt_w = self.weights[i]

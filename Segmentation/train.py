@@ -13,9 +13,9 @@ from tqdm import tqdm
 
 from eval import eval_net
 
-from torch.utils.tensorboard import SummaryWriter
 from dataset.basic_dataset import BasicDataset
 from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
+from dataset.visualize import vis_predict
 from torch.utils.data import DataLoader, dataset, random_split
 
 from model.deeplabv3.deeplab import *
@@ -24,11 +24,13 @@ from model.coeffnet.coeffnet import Coeffnet, Singlenet
 from utils.pos_weight import get_pos_weight_from_batch
 
 from loss.memory_loss import MemoryLoss
+from loss.dice_loss import DiceCoeff
 
-obj = 'bus'
+obj_train = 'cows'
+obj = 'dog'
 dir_img = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_davis_{obj}_coeff_oneshot'
+dir_checkpoint = f'checkpoints_davis_{obj}_train_{obj_train}'
 
 acc = []
 
@@ -53,9 +55,9 @@ def train_net(args,
     # train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     # val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
-    oneshot_dataset = OneshotDavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj, resize=(256, 256))
-    # oneshot_dataset = DavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj, resize=(256, 256))
-    norm_dataset = DavisDataset('/data/pancy/Davis/DAVIS-2017-trainval-480p/DAVIS', obj, resize=(256, 256))
+    # oneshot_dataset = OneshotDavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
+    oneshot_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj_train, resize=(256, 256))
+    norm_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
     n_train = len(oneshot_dataset)
     n_val = len(norm_dataset)
     train_loader = DataLoader(oneshot_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
@@ -120,7 +122,8 @@ def train_net(args,
 
                 masks_pred = net(imgs)
                 # loss = criterion(masks_pred, true_masks)
-                loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
+                # loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
+                loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks)
                 epoch_loss += loss.item()
                 count += 1
 
@@ -156,19 +159,17 @@ def train_net(args,
                         log_writer.write('Validation Dice Coeff: {}\n'.format(val_score))
                         log_writer.flush()
 
-        if save_cp:
-            try:
-                logging.info('Created checkpoint directory')
-            except OSError:
-                pass
+        if len(val_list) > 0:
             avg_valid_acc = sum(val_list)/len(val_list)
             if avg_valid_acc > max_valid_acc:
-                if args.model == 'singlenet':    
-                    torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
-                    # net.save_z(f'./Bases/{obj}.json')
+                vis_predict(os.path.join(dir_checkpoint, 'viz_pred'), net, val_loader, device)
+                if save_cp:
+                    if args.model == 'singlenet':    
+                        torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
+                        # net.save_z(f'./Bases/{obj}.json')
+                    log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}, current loss {epoch_loss/count}\n')
+                    logging.info(f'Checkpoint {epoch + 1} saved !')
                 max_valid_acc = avg_valid_acc
-                log_writer.write(f'Checkpoint {epoch + 1} saved ! current validation accuracy: {avg_valid_acc}, current loss {epoch_loss/count}\n')
-                logging.info(f'Checkpoint {epoch + 1} saved !')
 
     log_writer.close()
 

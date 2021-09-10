@@ -24,7 +24,7 @@ class DavisDataset(Dataset):
         assert 'JPEGImages' in sub_dirs and 'Annotations' in sub_dirs
         img_dir = os.path.join(ds_dir, 'JPEGImages')
         mask_dir = os.path.join(ds_dir, 'Annotations')
-        res = os.listdir(img_dir)[0]
+        res = '480p'
         img_dir = os.path.join(img_dir, res)
         mask_dir = os.path.join(mask_dir, res)
         obj_in_img = os.listdir(img_dir)
@@ -64,21 +64,21 @@ class DavisDataset(Dataset):
     def _augment(self, img, mask):
         img_size = img.size
         # color jitter
-        img = self.cj(img)
+        # img = self.cj(img)
         # img flip
         if random.random()<0.4:
             img = ImageOps.mirror(img)
             mask = ImageOps.mirror(mask)
         # random crop
-        # crop_rate = 0.3
-        # delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
-        # delta_w, delta_h = random.randint(0, delta_W), random.randint(0, delta_H)
-        # delta_x, delta_y = random.randint(0, delta_w), random.randint(0, delta_h)
-        # img = img.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
-        # mask = mask.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
+        crop_rate = 0.3
+        delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
+        delta_w, delta_h = random.randint(0, delta_W), random.randint(0, delta_H)
+        delta_x, delta_y = random.randint(0, delta_w), random.randint(0, delta_h)
+        img = img.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
+        mask = mask.crop([delta_x, delta_y, delta_x+img_size[0]-delta_w, delta_y+img_size[1]-delta_h]).resize(img_size)
         return img, mask
     
-    def _make_img_gt_point_pair(self, index, random_crop=True):
+    def _make_img_gt_point_pair(self, index, random_crop=False):
         img_file, mask_file = self.id_list[index]
         _img = Image.open(img_file).convert('RGB')
         _mask = Image.open(mask_file)
@@ -93,11 +93,7 @@ class DavisDataset(Dataset):
             _img = _img.resize(self.resize)
             _mask = _mask.resize(self.resize)
             
-        img = np.array(_img).astype(np.float32)
-        mask = np.array(_mask).astype(np.float32)
-        mask = mask == 1
-        
-        return img, mask, img_file, mask_file
+        return _img, _mask, img_file, mask_file
         
     def __getitem__(self, index):
         img, mask, img_file, mask_file = self._make_img_gt_point_pair(index)
@@ -126,7 +122,7 @@ class OneshotDavisDataset(DavisDataset):
         self.target_img_file, self.target_mask_file = self.id_list[index]
         self.dataset_len = dataset_len
         
-    def _make_img_gt_point_pair(self, index, random_crop=True):
+    def _make_img_gt_point_pair(self, index, random_crop=False):
         _img = Image.open(self.target_img_file).convert('RGB')
         _mask = Image.open(self.target_mask_file)
         
@@ -136,17 +132,13 @@ class OneshotDavisDataset(DavisDataset):
         if random_crop:
             _img, _mask = self._random_crop(_img, _mask)
             
-        _img, _mask = self._augment(_img, _mask)
+        # _img, _mask = self._augment(_img, _mask)
             
         if self.resize is not None:
             _img = _img.resize(self.resize)
             _mask = _mask.resize(self.resize)
-            
-        img = np.array(_img).astype(np.float32)
-        mask = np.array(_mask).astype(np.float32)
-        mask = mask == 1
         
-        return img, mask, self.target_img_file, self.target_mask_file
+        return _img, _mask, self.target_img_file, self.target_mask_file
     
     def __len__(self):
         return self.dataset_len

@@ -4,6 +4,7 @@ import random
 import argparse
 from model.coeffnet.coeffnet import Singlenet
 from dataset.basic_dataset import BasicDataset
+from dataset.davis_dataset import DavisDataset
 from torch.utils.data import DataLoader, sampler
 from eval import eval_net
 
@@ -29,12 +30,12 @@ if __name__ == "__main__":
     data_dir = args.data
     data_size = args.data_size
     
-    device = torch.device('cuda:6' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     net = Singlenet(z_dim=100, device=device)
     net.to(device=device)
     # net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
-    net.init_hypernet('./checkpoints_objectpursuit_test/checkpoint/hypernet.pth')
-    net.init_backbone('./checkpoints_objectpursuit_test/checkpoint/backbone.pth')
+    net.init_hypernet('./checkpoints_objectpursuit_realdata_50base/checkpoint/hypernet.pth')
+    net.init_backbone('./checkpoints_objectpursuit_realdata_50base/checkpoint/backbone.pth')
     net.load_z(z_path)
     print(f"load hypernet param from {hypernet_param_path} \n"
           f"load z from {z_path} \n"
@@ -45,7 +46,8 @@ if __name__ == "__main__":
     # dataset
     img_dir = os.path.join(data_dir, "imgs")
     mask_dir = os.path.join(data_dir, "masks")
-    eval_dataset = BasicDataset(img_dir, mask_dir, (256, 256))
+    # eval_dataset = BasicDataset(img_dir, mask_dir, (256, 256))
+    eval_dataset = DavisDataset("/orion/u/pancy/data/object-pursuit/davis/DAVIS-2017-trainval-480p/DAVIS", 'paragliding-launch', resize=(256, 256))
 
     n_size = len(eval_dataset)
     indices = [i for i in range(n_size)]

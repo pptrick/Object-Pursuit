@@ -11,6 +11,7 @@ import argparse
 from tqdm import tqdm
 
 from loss.dice_loss import dice_coeff
+from loss.criterion import jaccard
 
 from model.deeplabv3.deeplab import *
 from model.unet import UNet
@@ -41,6 +42,7 @@ def eval_net(net, loader, device):
                 pred = torch.sigmoid(mask_pred)
                 pred = (pred > 0.5).float()
                 res = dice_coeff(pred, true_masks).item()
+                # res = jaccard(true_masks, pred)
                 tot += res
                 records.append((res, img_file[0], mask_file[0]))
             pbar.update()

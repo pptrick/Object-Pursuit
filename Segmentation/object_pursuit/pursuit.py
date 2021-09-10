@@ -1,10 +1,11 @@
 import os
 import torch
+import shutil
 
 from model.coeffnet.hypernet import Hypernet
 from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
-from object_pursuit.data_selector import iThorDataSelector
+from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector
 from utils.GenBases import genBases
 from object_pursuit.train import train_net, create_dir, write_log
 
@@ -68,8 +69,12 @@ def pursuit(z_dim,
     log_file = open(os.path.join(output_dir, "pursuit_log.txt"), "w")
     
     # prepare bases
-    if pretrained_bases is not None:
+    if pretrained_bases is not None and os.path.isfile(pretrained_bases):
         genBases(pretrained_bases, base_dir, device=device)
+    elif pretrained_bases is not None and os.path.isdir(pretrained_bases):
+        base_files = [os.path.join(pretrained_bases, file) for file in sorted(os.listdir(pretrained_bases)) if file.endswith(".json")]
+        for f in base_files:
+            shutil.copy(f, base_dir)
     
     # build hypernet
     hypernet = Hypernet(z_dim)
@@ -84,7 +89,8 @@ def pursuit(z_dim,
     backbone.to(device)
     
     # data selector
-    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize)
+    # dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize)
+    dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
     
     # pursuit info
     pursuit_info = f'''Starting pursuing:
@@ -126,19 +132,20 @@ def pursuit(z_dim,
             write_log(log_file, "start coefficient pursuit:")
             # freeze the hypernet and backbone
             freeze(hypernet=hypernet, backbone=backbone)
-            coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
-            create_dir(coeff_pursuit_dir)
-            write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
-            max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
-                      zs=zs, 
-                      net_type="coeffnet", 
-                      hypernet=hypernet, 
-                      backbone=backbone,
-                      save_cp_path=coeff_pursuit_dir,
-                      base_dir=base_dir,
-                      max_epochs=80,
-                      lr=8e-5)
-            write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
+            # coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
+            # create_dir(coeff_pursuit_dir)
+            # write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
+            # max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+            #           zs=zs, 
+            #           net_type="coeffnet", 
+            #           hypernet=hypernet, 
+            #           backbone=backbone,
+            #           save_cp_path=coeff_pursuit_dir,
+            #           base_dir=base_dir,
+            #           max_epochs=2000,
+            #           lr=4e-4)
+            # write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
+            max_val_acc = 0.0
         # if not, train this object as a new base
         if should_retrain(max_val_acc): # the condition to retrain a new base
             write_log(log_file, "start to train as new base:")
@@ -153,8 +160,8 @@ def pursuit(z_dim,
                       backbone=backbone,
                       save_cp_path=base_update_dir,
                       base_dir=base_dir,
-                      max_epochs=80,
-                      lr=8e-5)
+                      max_epochs=3000,
+                      lr=4e-4)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         new_obj_dataset, obj_data_dir = dataSelector.next()
         obj_counter += 1
