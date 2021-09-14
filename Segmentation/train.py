@@ -15,6 +15,7 @@ from eval import eval_net
 
 from dataset.basic_dataset import BasicDataset
 from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
+from dataset.kitti_dataset import KittiTrainDataset, KittiTestDataset
 from dataset.visualize import vis_predict
 from torch.utils.data import DataLoader, dataset, random_split
 
@@ -27,10 +28,10 @@ from loss.memory_loss import MemoryLoss
 from loss.dice_loss import DiceCoeff
 
 obj_train = 'cows'
-obj = 'dog'
-dir_img = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/imgs']
-dir_mask = [f'/data/pancy/iThor/single_obj/FloorPlan2/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_davis_{obj}_train_{obj_train}'
+obj = 'AlarmClock'
+dir_img = [f'/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2/data_FloorPlan2_{obj}/imgs']
+dir_mask = [f'/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2/data_FloorPlan2_{obj}/masks']
+dir_checkpoint = f'checkpoints_kitti_4'
 
 acc = []
 
@@ -45,7 +46,7 @@ def train_net(args,
               img_scale=0.5,
               use_mem_loss=False):
 
-    # dataset = BasicDataset(dir_img, dir_mask, train=True)
+    # dataset = BasicDataset(dir_img, dir_mask, resize=(256, 256), train=True)
     # train_percent = 0.9
     # val_percent = 0.1
     # n_val = int(len(dataset) * val_percent)
@@ -56,8 +57,10 @@ def train_net(args,
     # val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
     # oneshot_dataset = OneshotDavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
-    oneshot_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj_train, resize=(256, 256))
-    norm_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
+    # oneshot_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj_train, resize=(256, 256))
+    # norm_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
+    oneshot_dataset = KittiTrainDataset('/orion/u/pancy/data/object-pursuit/kitti/4')
+    norm_dataset = KittiTestDataset('/orion/u/pancy/data/object-pursuit/kitti/4')
     n_train = len(oneshot_dataset)
     n_val = len(norm_dataset)
     train_loader = DataLoader(oneshot_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
@@ -141,7 +144,8 @@ def train_net(args,
                 if global_step % int(n_train / (0.05*batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
-                    val_score, _ = eval_net(net, val_loader, device)
+                    val_score = 0
+                    # val_score, _ = eval_net(net, val_loader, device)
                     acc.append(val_score)
                     val_list.append(val_score)
                     # scheduler.step(val_score)
@@ -161,6 +165,7 @@ def train_net(args,
 
         if len(val_list) > 0:
             avg_valid_acc = sum(val_list)/len(val_list)
+            vis_predict(os.path.join(dir_checkpoint, 'viz_pred'), net, val_loader, device)
             if avg_valid_acc > max_valid_acc:
                 vis_predict(os.path.join(dir_checkpoint, 'viz_pred'), net, val_loader, device)
                 if save_cp:
@@ -222,7 +227,7 @@ if __name__ == '__main__':
         net.init_backbone(path)
     elif args.model == "coeffnet":
         path = "./checkpoints_conv_small_full/checkpoint.pth"
-        net = Coeffnet(base_dir=path, z_dim=100, device=device, hypernet_path=path)
+        net = Coeffnet(base_dir='./Bases', z_dim=100, device=device, hypernet_path=path)
     else:
         raise NotImplementedError
     
