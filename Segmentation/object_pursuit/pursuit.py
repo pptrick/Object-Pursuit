@@ -132,20 +132,19 @@ def pursuit(z_dim,
             write_log(log_file, "start coefficient pursuit:")
             # freeze the hypernet and backbone
             freeze(hypernet=hypernet, backbone=backbone)
-            # coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
-            # create_dir(coeff_pursuit_dir)
-            # write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
-            # max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
-            #           zs=zs, 
-            #           net_type="coeffnet", 
-            #           hypernet=hypernet, 
-            #           backbone=backbone,
-            #           save_cp_path=coeff_pursuit_dir,
-            #           base_dir=base_dir,
-            #           max_epochs=2000,
-            #           lr=4e-4)
-            # write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
-            max_val_acc = 0.0
+            coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
+            create_dir(coeff_pursuit_dir)
+            write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
+            max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+                      zs=zs, 
+                      net_type="coeffnet", 
+                      hypernet=hypernet, 
+                      backbone=backbone,
+                      save_cp_path=coeff_pursuit_dir,
+                      base_dir=base_dir,
+                      max_epochs=2000,
+                      lr=4e-4)
+            write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         # if not, train this object as a new base
         if should_retrain(max_val_acc): # the condition to retrain a new base
             write_log(log_file, "start to train as new base:")
