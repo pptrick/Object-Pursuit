@@ -4,6 +4,7 @@ import math
 import collections
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from model.coeffnet.coeffnet import deeplab_forward_no_backbone, deeplab_forward
 from model.deeplabv3.backbone import build_backbone
@@ -92,6 +93,9 @@ class Singlenet(nn.Module):
             out = deeplab_forward(input, weights)
         return out
     
+    def L1_loss(self, coeff):
+        return coeff * F.l1_loss(self.z, torch.zeros(self.z.size()).to(self.z.device))
+    
 
 class Coeffnet(nn.Module):
     n_channels = 3
@@ -122,3 +126,6 @@ class Coeffnet(nn.Module):
         else:
             out = deeplab_forward(input, weights)
         return out
+    
+    def L1_loss(self, coeff):
+        return coeff * F.l1_loss(self.coeffs, torch.zeros(self.coeffs.size()).to(self.coeffs.device))

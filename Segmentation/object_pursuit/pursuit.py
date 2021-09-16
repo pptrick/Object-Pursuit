@@ -49,6 +49,19 @@ def should_retrain(max_val_acc):
         return True
     else:
         return False
+    
+def least_square(bases, target):
+    tar = torch.unsqueeze(target, dim=-1)
+    A = torch.stack(bases, dim=1)
+    coeff_mat = torch.mm(A.T, A)
+    proj = torch.mm(A.T, tar)
+    coeff = torch.mm(torch.inverse(coeff_mat), proj)
+    res = torch.mm(A, coeff)
+    res = torch.squeeze(res)
+    coeff = torch.squeeze(coeff)
+    # distance
+    dist = torch.norm(target-res)/torch.norm(target)
+    return res, coeff, dist
 
 def pursuit(z_dim, 
             data_dir, 
@@ -135,15 +148,16 @@ def pursuit(z_dim,
             coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
             create_dir(coeff_pursuit_dir)
             write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
-            max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
-                      zs=zs, 
-                      net_type="coeffnet", 
-                      hypernet=hypernet, 
-                      backbone=backbone,
-                      save_cp_path=coeff_pursuit_dir,
-                      base_dir=base_dir,
-                      max_epochs=2000,
-                      lr=4e-4)
+            # max_val_acc, coeff_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+            #           zs=zs, 
+            #           net_type="coeffnet", 
+            #           hypernet=hypernet, 
+            #           backbone=backbone,
+            #           save_cp_path=coeff_pursuit_dir,
+            #           base_dir=base_dir,
+            #           max_epochs=2000,
+            #           lr=4e-4)
+            max_val_acc = 0.0
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         # if not, train this object as a new base
         if should_retrain(max_val_acc): # the condition to retrain a new base
@@ -153,7 +167,7 @@ def pursuit(z_dim,
             base_update_dir = os.path.join(obj_dir, "base_update")
             create_dir(base_update_dir)
             write_log(log_file, f"base update result dir: {base_update_dir}")
-            max_val_acc = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+            max_val_acc, z_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
                       net_type="singlenet",
                       hypernet=hypernet,
                       backbone=backbone,
@@ -162,6 +176,15 @@ def pursuit(z_dim,
                       max_epochs=3000,
                       lr=4e-4)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
+            # check new z can now be approximated (linear expressed) by current bases
+            _, _, dist = least_square(zs, z_net.z)
+            if dist < 0.01: # condition, can be linear expressed
+                write_log(log_file, f"new z can be expressed by current bases, don't add it to bases")
+            else:
+                # save z as a new base
+                write_log(log_file, f"new z can't be expressed by current bases, dist: {dist}, add 'base_{base_num}.json' to bases")
+                z_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
+            
         new_obj_dataset, obj_data_dir = dataSelector.next()
         obj_counter += 1
         # save checkpoint

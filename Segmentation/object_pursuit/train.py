@@ -9,6 +9,7 @@ from torch import optim
 
 from model.coeffnet.coeffnet_simple import Singlenet, Coeffnet
 from loss.dice_loss import dice_coeff
+from loss.IoU_loss import IoULoss
 from loss.memory_loss import MemoryLoss
 from utils.pos_weight import get_pos_weight_from_batch
 
@@ -86,7 +87,8 @@ def train_net(z_dim,
               lr=0.0004, 
               val_percent=0.1,
               wait_epochs=3,
-              acc_threshold=0.95):
+              acc_threshold=0.95,
+              l1_loss_coeff=0.2):
     # set logger
     log_file = open(os.path.join(save_cp_path, "log.txt"), "w")
 
@@ -117,12 +119,10 @@ def train_net(z_dim,
     else:
         optim_param = filter(lambda p: p.requires_grad, itertools.chain(primary_net.parameters(), hypernet.parameters()))
     optimizer = optim.RMSprop(optim_param, lr=lr, weight_decay=1e-7, momentum=0.9)
-    optimizer = nn.DataParallel(optimizer, device_ids=[0, 1, 2])
     
-    # SegLoss = nn.BCEWithLogitsLoss()
     if net_type == "singlenet":
         MemLoss = MemoryLoss(Base_dir=base_dir, device=device)
-        mem_coeff = 0.01
+        mem_coeff = 0.04
         
     global_step = 0
     max_valid_acc = 0
@@ -167,17 +167,17 @@ def train_net(z_dim,
                     raise NotImplementedError
                 
                 seg_loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
-                
-                pbar.set_postfix(**{'seg loss (batch)': seg_loss.item()})
+                regular_loss = primary_net.L1_loss(l1_loss_coeff)
+                loss = seg_loss + regular_loss
+                pbar.set_postfix(**{'seg loss (batch)': loss.item()})
                 
                 # optimize
                 optimizer.zero_grad()
-                seg_loss.backward()
+                loss.backward()
                 if net_type == "singlenet":
                     mem_loss = MemLoss(hypernet, mem_coeff)
-                    # mem_loss.backward()
                 nn.utils.clip_grad_value_(optim_param, 0.1)
-                optimizer.module.step()
+                optimizer.step()
                 
                 pbar.update(imgs.shape[0])
                 global_step += 1
@@ -186,7 +186,7 @@ def train_net(z_dim,
                 if global_step % int(n_train / (0.05*batch_size)) == 0:
                     val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
                     val_list.append(val_score)
-                    write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss: {seg_loss}')
+                    write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss + l1 loss: {loss}')
                     
         if save_cp_path is not None:
             if len(val_list) > 0:
@@ -194,7 +194,7 @@ def train_net(z_dim,
                 if avg_valid_acc > max_valid_acc:
                     if net_type == "singlenet":
                         torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
-                        primary_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
+                        # primary_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
                     elif net_type == "coeffnet":
                         torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
                     max_valid_acc = avg_valid_acc
@@ -207,12 +207,12 @@ def train_net(z_dim,
                     # stop procedure
                     write_log(log_file, f'training stopped at epoch {epoch}')
                     log_file.close()
-                    return max_valid_acc
+                    return max_valid_acc, primary_net
     
     #stop procedure
     write_log(log_file, f'training stopped')
     log_file.close()
-    return max_valid_acc
+    return max_valid_acc, primary_net
             
                 
                 
