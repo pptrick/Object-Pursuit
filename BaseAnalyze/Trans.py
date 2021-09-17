@@ -1,4 +1,5 @@
 import os
+import re
 import torch
 import numpy as np
 
@@ -46,6 +47,19 @@ def viz_weight(weight_file):
     # for param in state_dict['weights']:
     #     print(param, state_dict['weights'][param].size())
     # print(state_dict['z'])
+    
+def is_equal(weight_file_1, weight_file_2):
+    state_dict1 = torch.load(weight_file_1, map_location='cpu')
+    state_dict2 = torch.load(weight_file_2, map_location='cpu')
+    for param in state_dict2:
+        if param == 'z':
+            continue
+        if param.startswith("hypernet"):
+            continue
+        new_param = re.match(r'backbone\.(.+)', param).group(1)
+        a = torch.sum((~torch.isclose(state_dict1['module.'+new_param], state_dict2[param])).float())
+        if a.item() > 0:
+            print(param)
 
 
 if __name__ == "__main__":
@@ -55,7 +69,8 @@ if __name__ == "__main__":
     # weight_vec = weight2vec(f"../Segmentation/INTERRUPTED.pth", ["backbone"], ["running_mean", "running_var", "num_batches_tracked"])
     # save_vec(weight_vec, dir="./Vec", name="Random")
     # print(weight_vec.shape)
-    viz_weight("../Segmentation/checkpoints_conv_hypernet/checkpoint.pth")
+    # viz_weight("../Segmentation/checkpoints_conv_hypernet/checkpoint.pth")
     # z2vec("../Segmentation/Bases", "./Vec")
     # obj = 'Kettle'
     # vec2z(f'./Vec/{obj}.npy', f'../Segmentation/Bases/{obj}.json')
+    is_equal("../Segmentation/checkpoints_objectpursuit_rhino_test_backbone/checkpoint/backbone.pth", "../Segmentation/checkpoints_conv_small_full/checkpoint.pth")

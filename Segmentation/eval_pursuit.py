@@ -34,8 +34,9 @@ if __name__ == "__main__":
     net = Singlenet(z_dim=100, device=device)
     net.to(device=device)
     # net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
-    net.init_hypernet(hypernet_param_path)
-    net.init_backbone(hypernet_param_path)
+    net.init_hypernet('./checkpoints_objectpursuit_rhino_test_0.5/checkpoint/hypernet.pth')
+    net.init_backbone('./checkpoints_objectpursuit_rhino_test_0.5/checkpoint/backbone.pth')
+    # net.init_backbone(hypernet_param_path)
     net.load_z(z_path)
     print(f"load hypernet param from {hypernet_param_path} \n"
           f"load z from {z_path} \n"
@@ -46,8 +47,8 @@ if __name__ == "__main__":
     # dataset
     img_dir = os.path.join(data_dir, "imgs")
     mask_dir = os.path.join(data_dir, "masks")
-    eval_dataset = BasicDataset(img_dir, mask_dir, (256, 256))
-    # eval_dataset = DavisDataset("/orion/u/pancy/data/object-pursuit/davis/DAVIS-2017-trainval-480p/DAVIS", 'bear', resize=(256, 256))
+    # eval_dataset = BasicDataset(img_dir, mask_dir, (256, 256))
+    eval_dataset = DavisDataset("/orion/u/pancy/data/object-pursuit/davis/DAVIS-2017-trainval-480p/DAVIS", 'rhino', resize=(256, 256))
 
     n_size = len(eval_dataset)
     indices = [i for i in range(n_size)]

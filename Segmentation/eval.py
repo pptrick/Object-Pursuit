@@ -19,7 +19,8 @@ from model.coeffnet.coeffnet import Coeffnet, Singlenet
 
 def eval_net(net, loader, device):
     """Evaluation without the densecrf with the dice coefficient"""
-    net.eval()
+    net.train()
+    # net.eval()
     mask_type = torch.float32 if net.n_classes == 1 else torch.long
     n_val = len(loader)  # the number of batch
     tot = 0

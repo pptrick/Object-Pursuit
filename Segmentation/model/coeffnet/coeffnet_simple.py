@@ -22,6 +22,8 @@ def init_backbone(model_path, backbone, device, freeze=False):
                 backbone_dict[param] = state_dict[param]
         if len(backbone_dict) > 0:
             backbone.load_state_dict(backbone_dict)
+        else:
+            print("[Warning] init backbone failed")
     # freeze backbone
     if freeze:
         for param in backbone.parameters():
@@ -40,6 +42,8 @@ def init_hypernet(model_path, hypernet, device, freeze=False):
                 hypernet_dict[param] = state_dict[param]
         if len(hypernet_dict) > 0:
             hypernet.load_state_dict(hypernet_dict)
+        else:
+            print("[Warning] init hypernet failed")
     # freeze hypernet
     if freeze:
         for param in hypernet.parameters():
