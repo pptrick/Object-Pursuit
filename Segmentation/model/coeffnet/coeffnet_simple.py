@@ -133,3 +133,16 @@ class Coeffnet(nn.Module):
     
     def L1_loss(self, coeff):
         return coeff * F.l1_loss(self.coeffs, torch.zeros(self.coeffs.size()).to(self.coeffs.device))
+    
+    def get_z(self, bases):
+        with torch.no_grad():
+            return self.combine_func(bases, self.coeffs)
+        
+    def save_z(self, file_path, bases, hypernet=None):
+        with torch.no_grad():
+            z = self.combine_func(bases, self.coeffs)
+            if hypernet is not None:
+                weights = hypernet(z)
+                torch.save({'z':z, 'weights':weights}, file_path)
+            else:
+                torch.save({'z':z}, file_path)

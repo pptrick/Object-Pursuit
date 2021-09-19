@@ -127,7 +127,7 @@ class Multinet(nn.Module):
         
         # backbone forward
         x, low_level_feat = self.backbone(input)
-        return deeplab_forward_no_backbone(input, x, low_level_feat, weights)
+        return deeplab_forward_no_backbone(input, x, low_level_feat, weights), z
 
     
 class Coeffnet(nn.Module):

@@ -13,6 +13,7 @@ def get_z_bases(z_dim, base_path, device):
     if os.path.isdir(base_path):
         base_files = [os.path.join(base_path, file) for file in sorted(os.listdir(base_path)) if file.endswith(".json")]
         zs = []
+        print(base_files)
         for f in base_files:
             z = torch.load(f, map_location=device)['z']
             assert(z.size()[0] == z_dim)
@@ -44,8 +45,8 @@ def unfreeze(hypernet=None, backbone=None):
         for param in backbone.parameters():
             param.requires_grad = True
             
-def should_retrain(max_val_acc):
-    if max_val_acc < 0.85:
+def can_be_expressed(max_val_acc):
+    if max_val_acc >= 0.80:
         return True
     else:
         return False
@@ -76,6 +77,8 @@ def pursuit(z_dim,
     create_dir(output_dir)
     base_dir = os.path.join(output_dir, "Bases")
     create_dir(base_dir)
+    z_dir = os.path.join(output_dir, "zs")
+    create_dir(z_dir)
     create_dir(os.path.join(output_dir, "explored_objects"))
     checkpoint_dir = os.path.join(output_dir, "checkpoint")
     create_dir(checkpoint_dir)
@@ -148,19 +151,18 @@ def pursuit(z_dim,
             coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
             create_dir(coeff_pursuit_dir)
             write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
-            # max_val_acc, coeff_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
-            #           zs=zs, 
-            #           net_type="coeffnet", 
-            #           hypernet=hypernet, 
-            #           backbone=backbone,
-            #           save_cp_path=coeff_pursuit_dir,
-            #           base_dir=base_dir,
-            #           max_epochs=2000,
-            #           lr=4e-4)
-            max_val_acc = 0.0
+            max_val_acc, coeff_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+                      zs=zs, 
+                      net_type="coeffnet", 
+                      hypernet=hypernet, 
+                      backbone=backbone,
+                      save_cp_path=coeff_pursuit_dir,
+                      base_dir=base_dir,
+                      max_epochs=2000,
+                      lr=4e-4)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         # if not, train this object as a new base
-        if should_retrain(max_val_acc): # the condition to retrain a new base
+        if not can_be_expressed(max_val_acc): # the condition to retrain a new base
             write_log(log_file, "start to train as new base:")
             # unfreeze the backbone
             unfreeze(hypernet=hypernet)
@@ -176,15 +178,21 @@ def pursuit(z_dim,
                       max_epochs=3000,
                       lr=4e-4)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
-            # check new z can now be approximated (linear expressed) by current bases
+            
+            # check new z can now be approximated (expressed by coeffs) by current bases
             _, _, dist = least_square(zs, z_net.z)
+            
             if dist < 0.01: # condition, can be linear expressed
                 write_log(log_file, f"new z can be expressed by current bases, don't add it to bases")
             else:
                 # save z as a new base
                 write_log(log_file, f"new z can't be expressed by current bases, dist: {dist}, add 'base_{base_num}.json' to bases")
-                z_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
+                z_net.save_z(os.path.join(base_dir, f"base_{'%04d' % base_num}.json"), hypernet)
             
+            z_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"))
+        else:    
+            coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), zs)
+                
         new_obj_dataset, obj_data_dir = dataSelector.next()
         obj_counter += 1
         # save checkpoint

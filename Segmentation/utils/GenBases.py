@@ -43,7 +43,7 @@ def genBases(checkpoint_path, output_dir, device=torch.device('cpu'), extension=
         for i in tqdm(range(base_num)):
             input_z = zs[i]
             weights = hypernet(input_z)
-            saved_file_path = os.path.join(output_dir, f"base_{i}{extension}")
+            saved_file_path = os.path.join(output_dir, f"base_{'%04d' % i}{extension}")
             torch.save({'z':input_z, 'weights':weights}, saved_file_path)
     except Exception:
         return 0
