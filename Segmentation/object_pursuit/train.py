@@ -131,6 +131,7 @@ def train_net(z_dim,
         
     global_step = 0
     max_valid_acc = 0
+    max_record = None
     stop_counter = 0
     
     # write info
@@ -153,68 +154,76 @@ def train_net(z_dim,
     write_log(log_file, info_text)
         
     # training process
-    for epoch in range(max_epochs):
-        set_train(primary_net, hypernet, backbone)
-        val_list = []
-        write_log(log_file, f"Start epoch {epoch}")
-        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{max_epochs}', unit='img') as pbar:
-            for batch in train_loader:
-                imgs = batch['image']
-                true_masks = batch['mask']
-                imgs = imgs.to(device=device, dtype=torch.float32)
-                true_masks = true_masks.to(device=device, dtype=torch.float32)
-                
-                if net_type == "singlenet":
-                    masks_pred = primary_net(imgs, hypernet, backbone)
-                elif net_type == "coeffnet":
-                    masks_pred = primary_net(imgs, zs, hypernet, backbone)
-                else:
-                    raise NotImplementedError
-                
-                seg_loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
-                regular_loss = primary_net.L1_loss(l1_loss_coeff)
-                loss = seg_loss + regular_loss
-                pbar.set_postfix(**{'seg loss (batch)': loss.item()})
-                
-                # optimize
-                optimizer.zero_grad()
-                loss.backward()
-                if net_type == "singlenet":
-                    mem_loss = MemLoss(hypernet, mem_coeff)
-                nn.utils.clip_grad_value_(optim_param, 0.1)
-                optimizer.step()
-                
-                pbar.update(imgs.shape[0])
-                global_step += 1
-                
-                # eval
-                if global_step % int(n_train / (5*batch_size)) == 0:
-                    val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
-                    val_list.append(val_score)
-                    write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss + l1 loss: {loss}')
+    try:
+        for epoch in range(max_epochs):
+            set_train(primary_net, hypernet, backbone)
+            val_list = []
+            write_log(log_file, f"Start epoch {epoch}")
+            with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{max_epochs}', unit='img') as pbar:
+                for batch in train_loader:
+                    imgs = batch['image']
+                    true_masks = batch['mask']
+                    imgs = imgs.to(device=device, dtype=torch.float32)
+                    true_masks = true_masks.to(device=device, dtype=torch.float32)
                     
-        if save_cp_path is not None:
-            if len(val_list) > 0:
-                avg_valid_acc = sum(val_list)/len(val_list)
-                if avg_valid_acc > max_valid_acc:
                     if net_type == "singlenet":
-                        torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
+                        masks_pred = primary_net(imgs, hypernet, backbone)
                     elif net_type == "coeffnet":
-                        torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
-                    max_valid_acc = avg_valid_acc
-                    stop_counter = 0
-                    write_log(log_file, f'epoch {epoch} checkpoint saved! best validation acc: {max_valid_acc}')
-                else:
-                    stop_counter += 1
-                
-                if stop_counter >= wait_epochs or max_valid_acc > acc_threshold:
-                    # stop procedure
-                    write_log(log_file, f'training stopped at epoch {epoch}')
-                    log_file.close()
-                    return max_valid_acc, primary_net
+                        masks_pred = primary_net(imgs, zs, hypernet, backbone)
+                    else:
+                        raise NotImplementedError
+                    
+                    seg_loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([get_pos_weight_from_batch(true_masks)]).to(device))
+                    regular_loss = primary_net.L1_loss(l1_loss_coeff)
+                    loss = seg_loss + regular_loss
+                    pbar.set_postfix(**{'seg loss (batch)': loss.item()})
+                    
+                    # optimize
+                    optimizer.zero_grad()
+                    loss.backward()
+                    if net_type == "singlenet":
+                        mem_loss = MemLoss(hypernet, mem_coeff)
+                    nn.utils.clip_grad_value_(optim_param, 0.1)
+                    optimizer.step()
+                    
+                    pbar.update(imgs.shape[0])
+                    global_step += 1
+                    
+                    # eval
+                    if global_step % int(n_train / (5*batch_size)) == 0:
+                        val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
+                        val_list.append(val_score)
+                        write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss + l1 loss: {loss}')
+                        
+            if save_cp_path is not None:
+                if len(val_list) > 0:
+                    avg_valid_acc = sum(val_list)/len(val_list)
+                    if avg_valid_acc > max_valid_acc:
+                        if net_type == "singlenet":
+                            max_record = primary_net.z
+                            torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
+                        elif net_type == "coeffnet":
+                            max_record = primary_net.coeffs
+                            torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
+                        max_valid_acc = avg_valid_acc
+                        stop_counter = 0
+                        write_log(log_file, f'epoch {epoch} checkpoint saved! best validation acc: {max_valid_acc}')
+                    else:
+                        stop_counter += 1
+                    
+                    if stop_counter >= wait_epochs or max_valid_acc > acc_threshold:
+                        # stop procedure
+                        write_log(log_file, f'training stopped at epoch {epoch}')
+                        write_log(log_file, f'current record value (coeff or z): {max_record}')
+                        log_file.close()
+                        return max_valid_acc, primary_net
+    except Exception as e:
+        write_log(log_file, f'Error catch during training! info: {e}')
+        return 0.0, primary_net
     
     #stop procedure
     write_log(log_file, f'training stopped')
+    write_log(log_file, f'current record value (coeff or z): {max_record}')
     log_file.close()
     return max_valid_acc, primary_net
             
