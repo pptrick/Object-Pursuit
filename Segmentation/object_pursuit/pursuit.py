@@ -2,6 +2,7 @@ import os
 import torch
 import shutil
 
+from tqdm import tqdm
 from model.coeffnet.hypernet import Hypernet
 from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
@@ -13,7 +14,6 @@ def get_z_bases(z_dim, base_path, device):
     if os.path.isdir(base_path):
         base_files = [os.path.join(base_path, file) for file in sorted(os.listdir(base_path)) if file.endswith(".json")]
         zs = []
-        print(base_files)
         for f in base_files:
             z = torch.load(f, map_location=device)['z']
             assert(z.size()[0] == z_dim)
@@ -28,6 +28,16 @@ def get_z_bases(z_dim, base_path, device):
         return zs
     else:
         raise IOError
+    
+def save_base_as_init_objects(bases, z_dir, hypernet=None):
+    if os.path.isdir(z_dir):
+        for i,z in enumerate(tqdm(bases)):
+            file_path = os.path.join(z_dir, f"z_{'%04d' % i}.json")
+            if hypernet is not None:
+                weights = hypernet(z)
+                torch.save({'z':z, 'weights':weights}, file_path)
+            else:
+                torch.save({'z':z}, file_path)
     
 def freeze(hypernet=None, backbone=None):
     if hypernet is not None:
@@ -45,8 +55,8 @@ def unfreeze(hypernet=None, backbone=None):
         for param in backbone.parameters():
             param.requires_grad = True
             
-def can_be_expressed(max_val_acc):
-    if max_val_acc >= 0.80:
+def can_be_expressed(max_val_acc, threshold):
+    if max_val_acc >= threshold:
         return True
     else:
         return False
@@ -72,7 +82,8 @@ def pursuit(z_dim,
             pretrained_backbone=None, 
             pretrained_hypernet=None, 
             select_strat="sequence", 
-            resize=None):
+            resize=None,
+            express_threshold=0.8):
     # prepare for new pursuit dir
     create_dir(output_dir)
     base_dir = os.path.join(output_dir, "Bases")
@@ -105,29 +116,38 @@ def pursuit(z_dim,
     backbone.to(device)
     
     # data selector
-    # dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize)
-    dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
+    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize)
+    # dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
+    
+    # initialize current object list
+    init_bases = get_z_bases(z_dim, base_dir, device)
+    init_base_num = len(init_bases)
+    save_base_as_init_objects(init_bases, z_dir, hypernet=hypernet)
+    obj_counter = init_base_num
     
     # pursuit info
     pursuit_info = f'''Starting pursuing:
-        z_dim:                  {z_dim}
-        object data dir:        {data_dir}
-        output dir:             {output_dir}
-        device:                 {device}
-        pretrained hypernet:    {pretrained_hypernet}
-        pretrained backbone:    {pretrained_backbone}
-        pretrained bases:       {pretrained_bases}
-        data select strategy:   {select_strat}
-        data resize:            {resize}
-        bases dir:              {base_dir}
+        z_dim:                            {z_dim}
+        object data dir:                  {data_dir}
+        output dir:                       {output_dir}
+        device:                           {device}
+        pretrained hypernet:              {pretrained_hypernet}
+        pretrained backbone:              {pretrained_backbone}
+        pretrained bases:                 {pretrained_bases}
+        data select strategy:             {select_strat}
+        data resize:                      {resize}
+        bases dir:                        {base_dir}
+        pretrained (initial) base index:  0~{init_base_num-1}  
+        initial (first) object index:     {obj_counter}
+        express accuracy threshold:       {express_threshold}
     '''
     write_log(log_file, pursuit_info)
     
     new_obj_dataset, obj_data_dir = dataSelector.next()
-    obj_counter = 0
+    
     while new_obj_dataset is not None:
-        zs = get_z_bases(z_dim, base_dir, device)
-        base_num = len(zs)
+        bases = get_z_bases(z_dim, base_dir, device)
+        base_num = len(bases)
         
         # for each new object, create a new dir
         obj_dir = os.path.join(output_dir, "explored_objects", f"obj_{obj_counter}")
@@ -140,30 +160,32 @@ def pursuit(z_dim,
             output obj dir:      {obj_dir}
         '''
         max_val_acc = 0
-        write_log(log_file, "\n===============start new object================")
+        write_log(log_file, "\n=============================start new object==============================")
         write_log(log_file, new_obj_info)
         
-        # test if a new object can be expressed by other objects
+        # ========================================================================================================
+        # (first check) test if a new object can be expressed by other objects
         if base_num > 0:
-            write_log(log_file, "start coefficient pursuit:")
+            write_log(log_file, "start coefficient pursuit (first check):")
             # freeze the hypernet and backbone
             freeze(hypernet=hypernet, backbone=backbone)
             coeff_pursuit_dir = os.path.join(obj_dir, "coeff_pursuit")
             create_dir(coeff_pursuit_dir)
             write_log(log_file, f"coeff pursuit result dir: {coeff_pursuit_dir}")
             max_val_acc, coeff_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
-                      zs=zs, 
+                      zs=bases, 
                       net_type="coeffnet", 
                       hypernet=hypernet, 
                       backbone=backbone,
                       save_cp_path=coeff_pursuit_dir,
-                      base_dir=base_dir,
-                      max_epochs=2000,
-                      lr=4e-4)
+                      z_dir=z_dir,
+                      max_epochs=200,
+                      lr=1e-4)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
-        # if not, train this object as a new base
-        if not can_be_expressed(max_val_acc): # the condition to retrain a new base
-            write_log(log_file, "start to train as new base:")
+        # ==========================================================================================================
+        # (train as a new base) if not, train this object as a new base
+        if not can_be_expressed(max_val_acc, express_threshold): # the condition to retrain a new base
+            write_log(log_file, "can't be expressed by bases, start to train as new base:")
             # unfreeze the backbone
             unfreeze(hypernet=hypernet)
             base_update_dir = os.path.join(obj_dir, "base_update")
@@ -174,31 +196,55 @@ def pursuit(z_dim,
                       hypernet=hypernet,
                       backbone=backbone,
                       save_cp_path=base_update_dir,
-                      base_dir=base_dir,
-                      max_epochs=3000,
-                      lr=4e-4)
+                      z_dir=z_dir,
+                      max_epochs=200,
+                      wait_epochs=4,
+                      lr=1e-4)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
             
-            # check new z can now be approximated (expressed by coeffs) by current bases
-            _, _, dist = least_square(zs, z_net.z)
+            # ======================================================================================================
+            # (second check) check new z can now be approximated (expressed by coeffs) by current bases
+            write_log(log_file, f"start to examine whether the object {obj_counter} can be expressed by bases now (second check):")
+            # freeze the hypernet and backbone
+            freeze(hypernet=hypernet, backbone=backbone)
+            check_express_dir = os.path.join(obj_dir, "check_express")
+            create_dir(check_express_dir)
+            write_log(log_file, f"check express result dir: {check_express_dir}")
+            max_val_acc, _ = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+                    zs=bases, 
+                    net_type="coeffnet", 
+                    hypernet=hypernet, 
+                    backbone=backbone,
+                    save_cp_path=check_express_dir,
+                    z_dir=z_dir,
+                    max_epochs=200,
+                    lr=1e-4,
+                    acc_threshold=express_threshold)
             
-            if dist < 0.01: # condition, can be linear expressed
+            if can_be_expressed(max_val_acc, express_threshold):
                 write_log(log_file, f"new z can be expressed by current bases, don't add it to bases")
             else:
                 # save z as a new base
-                write_log(log_file, f"new z can't be expressed by current bases, dist: {dist}, add 'base_{base_num}.json' to bases")
+                write_log(log_file, f"new z can't be expressed by current bases, express max val acc: {max_val_acc}, add 'base_{'%04d' % base_num}.json' to bases")
                 z_net.save_z(os.path.join(base_dir, f"base_{'%04d' % base_num}.json"), hypernet)
+            # ======================================================================================================
             
-            z_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"))
-        else:    
-            coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), zs)
-                
+            
+            # save object's z
+            write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")   
+            z_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), hypernet)
+        else:
+            # save object's z
+            write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")    
+            coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), bases, hypernet)
+        
+        write_log(log_file, f"save hypernet and backbone to {checkpoint_dir}, move to next object")     
         new_obj_dataset, obj_data_dir = dataSelector.next()
         obj_counter += 1
         # save checkpoint
         torch.save(hypernet.state_dict(), os.path.join(checkpoint_dir, f'hypernet.pth'))
         torch.save(backbone.state_dict(), os.path.join(checkpoint_dir, f'backbone.pth'))
-        write_log(log_file, "\n===============end object================")
+        write_log(log_file, "\n===============================end object=================================")
         
     log_file.close()
     

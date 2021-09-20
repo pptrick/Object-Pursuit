@@ -42,6 +42,10 @@ def eval_net(net_type, primary_net, loader, device, hypernet, backbone=None, zs=
     n_val = len(loader)  # the number of batch
     tot = 0
     
+    # in case there's only one batch
+    if n_val == 0:
+        n_val = 1
+    
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
         for batch in loader:
             imgs, true_masks = batch['image'], batch['mask']
@@ -81,9 +85,9 @@ def train_net(z_dim,
               backbone=None, 
               zs=None, 
               save_cp_path=None, 
-              base_dir=None, 
+              z_dir=None, 
               max_epochs=80, 
-              batch_size=16, 
+              batch_size=64, 
               lr=0.0004, 
               val_percent=0.1,
               wait_epochs=3,
@@ -99,19 +103,20 @@ def train_net(z_dim,
         assert zs is not None and len(zs) == base_num
         primary_net = Coeffnet(base_num, nn_init=True)
     else:
-        raise NotImplementedError    
+        raise NotImplementedError
+    
     primary_net.to(device)
     
     # set dataset and dataloader
-    # n_val = int(len(dataset) * val_percent)
-    # n_train = len(dataset) - n_val
-    # train, val = random_split(dataset, [n_train, n_val])
-    # train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    # val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
-    n_train = len(dataset)
-    n_val = len(dataset)
-    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    n_val = int(len(dataset) * val_percent)
+    n_train = len(dataset) - n_val
+    train, val = random_split(dataset, [n_train, n_val])
+    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    # n_train = len(dataset)
+    # n_val = len(dataset)
+    # train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    # val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
     # optimize
     if backbone is not None:
@@ -121,7 +126,7 @@ def train_net(z_dim,
     optimizer = optim.RMSprop(optim_param, lr=lr, weight_decay=1e-7, momentum=0.9)
     
     if net_type == "singlenet":
-        MemLoss = MemoryLoss(Base_dir=base_dir, device=device)
+        MemLoss = MemoryLoss(Base_dir=z_dir, device=device)
         mem_coeff = 0.04
         
     global_step = 0
@@ -138,7 +143,7 @@ def train_net(z_dim,
         Validation size: {n_val}
         Checkpoints:     {save_cp_path}
         Device:          {device}
-        base_dir:        {base_dir}
+        z_dir:           {z_dir}
         wait epochs:     {wait_epochs}
         val acc thres:   {acc_threshold}
         trainable parameter number of the primarynet: {sum(x.numel() for x in primary_net.parameters() if x.requires_grad)}
@@ -183,7 +188,7 @@ def train_net(z_dim,
                 global_step += 1
                 
                 # eval
-                if global_step % int(n_train / (0.05*batch_size)) == 0:
+                if global_step % int(n_train / (5*batch_size)) == 0:
                     val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
                     val_list.append(val_score)
                     write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss + l1 loss: {loss}')
@@ -194,7 +199,6 @@ def train_net(z_dim,
                 if avg_valid_acc > max_valid_acc:
                     if net_type == "singlenet":
                         torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_z.pth'))
-                        # primary_net.save_z(os.path.join(base_dir, f'base_{base_num}.json'), hypernet)
                     elif net_type == "coeffnet":
                         torch.save(primary_net.state_dict(), os.path.join(save_cp_path, f'Best_coeff.pth'))
                     max_valid_acc = avg_valid_acc

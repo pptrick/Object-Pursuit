@@ -9,7 +9,7 @@ class iThorDataSelector(object):
         assert os.path.isdir(data_dir)
         self.strat = strat
         self.resize = resize
-        self.dir_names = os.listdir(data_dir)
+        self.dir_names = sorted(os.listdir(data_dir))
         self.dir_path = [os.path.join(data_dir, dn) for dn in self.dir_names]
         self.counter = 0
         self.remain_set = copy.deepcopy(self.dir_path)

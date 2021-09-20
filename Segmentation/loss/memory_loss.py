@@ -33,17 +33,15 @@ class MemoryLoss(nn.Module):
         return loss
             
     def forward(self, hypernet, mem_coeff):
-        loss = None
-        # TODO: consider change loss cal to randomly/sequential choice
         index_list = range(len(self.z))
-        index_list = random.sample(index_list, min(10, len(index_list)))
+        if len(index_list) > 10:
+            sample_len = int(0.2 * len(index_list))
+        else:
+            sample_len = len(index_list)
+        index_list = random.sample(index_list, sample_len)
         for i in index_list:
             pred_w = hypernet(self.z[i])
             gt_w = self.weights[i]
-            # if loss is None:
-            #     loss = self._l2_loss(pred_w, gt_w)
-            # else:
-            #     loss += self._l2_loss(pred_w, gt_w)
             loss = mem_coeff * self._l2_loss(pred_w, gt_w)
             loss.backward()
         return loss
