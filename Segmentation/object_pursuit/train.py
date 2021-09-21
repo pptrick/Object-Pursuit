@@ -37,7 +37,7 @@ def write_log(log_file, string):
 def eval_net(net_type, primary_net, loader, device, hypernet, backbone=None, zs=None):
     """Evaluation without the densecrf with the dice coefficient"""
     # set eval
-    set_eval(primary_net, hypernet, backbone)
+    set_eval(primary_net, hypernet)
 
     n_val = len(loader)  # the number of batch
     tot = 0
