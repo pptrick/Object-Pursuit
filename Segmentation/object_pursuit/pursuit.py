@@ -200,8 +200,9 @@ def pursuit(z_dim,
                       save_cp_path=base_update_dir,
                       z_dir=z_dir,
                       max_epochs=200,
-                      wait_epochs=3,
-                      lr=1e-4)
+                      wait_epochs=4,
+                      lr=1e-4,
+                      l1_loss_coeff=0.1)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
             
             # if the object is invalid
@@ -238,7 +239,7 @@ def pursuit(z_dim,
                 write_log(log_file, f"new z can be expressed by current bases, max val acc: {max_val_acc}, don't add it to bases")
                 # save object's z
                 write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")
-                examine_coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), hypernet)
+                examine_coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), bases, hypernet)
             else:
                 # save z as a new base
                 write_log(log_file, f"new z can't be expressed by current bases, express max val acc: {max_val_acc}, add 'base_{'%04d' % base_num}.json' to bases")
