@@ -44,5 +44,4 @@ class MemoryLoss(nn.Module):
             gt_w = self.weights[i]
             loss = mem_coeff * self._l2_loss(pred_w, gt_w)
             loss.backward()
-        return loss
             

@@ -91,7 +91,7 @@ def train_net(z_dim,
               lr=0.0004, 
               val_percent=0.1,
               wait_epochs=3,
-              acc_threshold=0.95,
+              acc_threshold=0.90,
               l1_loss_coeff=0.2):
     # set logger
     log_file = open(os.path.join(save_cp_path, "log.txt"), "w")
@@ -108,9 +108,15 @@ def train_net(z_dim,
     primary_net.to(device)
     
     # set dataset and dataloader
-    n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train, val = random_split(dataset, [n_train, n_val])
+    maximum_len = 2500
+    if len(dataset) > maximum_len:
+        n_data = maximum_len
+    else:
+        n_data = len(dataset)
+    n_val = int(n_data * val_percent)
+    n_train = int(n_data * (1-val_percent))
+    n_rest = len(dataset) - n_val - n_train
+    train, val, _ = random_split(dataset, [n_train, n_val, n_rest])
     train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     # n_train = len(dataset)
@@ -182,7 +188,7 @@ def train_net(z_dim,
                     optimizer.zero_grad()
                     loss.backward()
                     if net_type == "singlenet":
-                        mem_loss = MemLoss(hypernet, mem_coeff)
+                        MemLoss(hypernet, mem_coeff)
                     nn.utils.clip_grad_value_(optim_param, 0.1)
                     optimizer.step()
                     
@@ -190,7 +196,7 @@ def train_net(z_dim,
                     global_step += 1
                     
                     # eval
-                    if global_step % int(n_train / (5*batch_size)) == 0:
+                    if global_step % int(n_train / (2*batch_size)) == 0:
                         val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
                         val_list.append(val_score)
                         write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss + l1 loss: {loss}')

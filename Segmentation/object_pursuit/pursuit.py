@@ -118,7 +118,7 @@ def pursuit(z_dim,
     backbone.to(device)
     
     # data selector
-    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize)
+    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=2)
     # dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
     
     # initialize current object list
@@ -200,7 +200,7 @@ def pursuit(z_dim,
                       save_cp_path=base_update_dir,
                       z_dir=z_dir,
                       max_epochs=200,
-                      wait_epochs=4,
+                      wait_epochs=5,
                       lr=1e-4,
                       l1_loss_coeff=0.1)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
@@ -218,22 +218,25 @@ def pursuit(z_dim,
             
             # ======================================================================================================
             # (second check) check new z can now be approximated (expressed by coeffs) by current bases
-            write_log(log_file, f"start to examine whether the object {obj_counter} can be expressed by bases now (second check):")
-            # freeze the hypernet and backbone
-            freeze(hypernet=hypernet, backbone=backbone)
-            check_express_dir = os.path.join(obj_dir, "check_express")
-            create_dir(check_express_dir)
-            write_log(log_file, f"check express result dir: {check_express_dir}")
-            max_val_acc, examine_coeff_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
-                    zs=bases, 
-                    net_type="coeffnet", 
-                    hypernet=hypernet, 
-                    backbone=backbone,
-                    save_cp_path=check_express_dir,
-                    z_dir=z_dir,
-                    max_epochs=200,
-                    lr=1e-4,
-                    acc_threshold=1.0)
+            if base_num > 0:
+                write_log(log_file, f"start to examine whether the object {obj_counter} can be expressed by bases now (second check):")
+                # freeze the hypernet and backbone
+                freeze(hypernet=hypernet, backbone=backbone)
+                check_express_dir = os.path.join(obj_dir, "check_express")
+                create_dir(check_express_dir)
+                write_log(log_file, f"check express result dir: {check_express_dir}")
+                max_val_acc, examine_coeff_net = train_net(z_dim=z_dim, base_num=base_num, dataset=new_obj_dataset, device=device,
+                        zs=bases, 
+                        net_type="coeffnet", 
+                        hypernet=hypernet, 
+                        backbone=backbone,
+                        save_cp_path=check_express_dir,
+                        z_dir=z_dir,
+                        max_epochs=200,
+                        lr=1e-4,
+                        acc_threshold=1.0)
+            else:
+                max_val_acc = 0.0
             
             if can_be_expressed(max_val_acc, express_threshold):
                 write_log(log_file, f"new z can be expressed by current bases, max val acc: {max_val_acc}, don't add it to bases")
