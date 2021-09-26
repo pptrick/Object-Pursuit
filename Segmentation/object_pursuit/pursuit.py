@@ -24,7 +24,9 @@ def get_z_bases(z_dim, base_path, device):
         zs = []
         zs_sync = torch.load(base_path, map_location=device)['z']
         for i in range(len(zs_sync)):
-            zs.append(zs_sync[i].to(device))
+            z = zs_sync[i].to(device)
+            assert(z.size()[0] == z_dim)
+            zs.append(z)
         return zs
     else:
         raise IOError

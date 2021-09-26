@@ -2,6 +2,7 @@ import os
 import collections
 import torch
 import random
+import json
 import torch.nn as nn
 from tqdm import tqdm
 
@@ -44,6 +45,7 @@ def eval_net(net, loader, ident, device):
 
 if __name__ == "__main__":
     checkpoint_path = './checkpoints_conv_small_full/checkpoint.pth'
+    rec_path = './checkpoints_conv_small_full/record.json'
     data_path = "/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2"
     prefix = "data_FloorPlan2_"
     cuda = 0
@@ -62,6 +64,8 @@ if __name__ == "__main__":
     net.to(device=device)
 
     print(f"load checkpoints from {checkpoint_path}")
+    
+    record_list = []
 
     for obj in obj_map:
         ident = torch.tensor([obj_map[obj]]).to(device)
@@ -81,6 +85,15 @@ if __name__ == "__main__":
         
         res = eval_net(net, eval_loader, ident, device)
         print(f"Object: {obj}, identity: {ident[0].item()}, dataset size: {n_size}, avg eval coeff: {res}")
-    
+        record = {'acc': res, 
+                  'data_dir': data_dir,
+                  'index': obj_map[obj],
+                  'base_file': f"base_{'%04d' % obj_map[obj]}.json",
+                  'obj_name': obj}
+        record_list.append(record)
+        
+    print("Final results: ", record_list)
+    with open(rec_path, 'w') as f:
+        json.dump(record_list, f)
     # torch.save(net.state_dict(),'./checkpoints_equal/checkpoint_test.pth')
     
