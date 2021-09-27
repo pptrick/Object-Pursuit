@@ -233,6 +233,34 @@ def train_net(z_dim,
     log_file.close()
     return max_valid_acc, primary_net
             
-                
-                
-                
+
+def have_seen(dataset, device, z_dir, z_dim, hypernet, backbone, threshold, start_index=0, test_percent=0.2, batch_size=64):
+    primary_net = Singlenet(z_dim)
+    primary_net.to(device)
+    
+    n_test = int(len(dataset)*test_percent)
+    n_rest = len(dataset) - n_test
+    test_set, _ = random_split(dataset, [n_test, n_rest])
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    
+    z_files = [os.path.join(z_dir, zf) for zf in sorted(os.listdir(z_dir)) if zf.endswith('.json')]
+    max_acc = 0.0
+    max_zf = None
+    count = 0
+    for zf in z_files:
+        if count < start_index:
+            count += 1
+            continue
+        primary_net.load_z(zf)
+        test_acc = eval_net(net_type="singlenet", primary_net=primary_net, loader=test_loader, device=device, hypernet=hypernet, backbone=backbone)
+        if test_acc > max_acc:
+            max_acc = test_acc
+            max_zf = zf
+        count += 1
+    if max_acc > threshold:
+        return True, max_acc, max_zf
+    else:
+        return False, max_acc, max_zf
+            
+    
+         

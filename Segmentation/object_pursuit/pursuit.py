@@ -1,3 +1,4 @@
+from itertools import count
 import os
 import torch
 import shutil
@@ -8,7 +9,7 @@ from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
 from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector
 from utils.GenBases import genBases
-from object_pursuit.train import train_net, create_dir, write_log
+from object_pursuit.train import train_net, create_dir, write_log, have_seen
 
 def get_z_bases(z_dim, base_path, device):
     if os.path.isdir(base_path):
@@ -40,7 +41,17 @@ def save_base_as_init_objects(bases, z_dir, hypernet=None):
                 torch.save({'z':z, 'weights':weights}, file_path)
             else:
                 torch.save({'z':z}, file_path)
-    
+                
+def copy_zs(src_dir, target_dir):
+    create_dir(target_dir)
+    if os.path.isdir(src_dir) and os.path.isdir(target_dir):
+        files = os.listdir(src_dir)
+        for f in files:
+            if f.endswith(".json"):
+                path = os.path.join(src_dir, f)
+                z = torch.load(path, map_location=torch.device('cpu'))['z']
+                torch.save({'z':z}, os.path.join(target_dir, f))
+            
 def freeze(hypernet=None, backbone=None):
     if hypernet is not None:
         for param in hypernet.parameters():
@@ -80,6 +91,7 @@ def pursuit(z_dim,
             data_dir, 
             output_dir, 
             device, 
+            initial_zs = None,
             pretrained_bases=None,
             pretrained_backbone=None, 
             pretrained_hypernet=None, 
@@ -120,14 +132,20 @@ def pursuit(z_dim,
     backbone.to(device)
     
     # data selector
-    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=2)
+    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1)
     # dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
     
-    # initialize current object list
+    # initialize bases
     init_bases = get_z_bases(z_dim, base_dir, device)
     init_base_num = len(init_bases)
-    save_base_as_init_objects(init_bases, z_dir, hypernet=hypernet)
-    obj_counter = init_base_num
+    
+    # initialize current object list
+    if initial_zs is None:
+        initial_zs = base_dir
+    init_objects = get_z_bases(z_dim, initial_zs, device)
+    init_objects_num = len(init_objects)
+    save_base_as_init_objects(init_objects, z_dir, hypernet=hypernet)
+    obj_counter = init_objects_num
     
     # pursuit info
     pursuit_info = f'''Starting pursuing:
@@ -148,16 +166,28 @@ def pursuit(z_dim,
     write_log(log_file, pursuit_info)
     
     new_obj_dataset, obj_data_dir = dataSelector.next()
+    counter = 0
     
     while new_obj_dataset is not None:
         bases = get_z_bases(z_dim, base_dir, device)
         base_num = len(bases)
+        
+        # record checkpoints per 8 round
+        counter += 1
+        if counter % 8 == 0:
+            temp_checkpoint_dir = os.path.join(checkpoint_dir, f"checkpoint_round_{counter}")
+            create_dir(temp_checkpoint_dir)
+            torch.save(hypernet.state_dict(), os.path.join(temp_checkpoint_dir, f'hypernet.pth'))
+            copy_zs(z_dir, os.path.join(temp_checkpoint_dir, "zs"))
+            copy_zs(base_dir, os.path.join(temp_checkpoint_dir, "Bases"))
+            write_log(log_file, f"[checkpoint] pursuit round {counter} has been saved to {temp_checkpoint_dir}")
         
         # for each new object, create a new dir
         obj_dir = os.path.join(output_dir, "explored_objects", f"obj_{obj_counter}")
         create_dir(obj_dir)
         
         new_obj_info = f'''Starting new object:
+            round:               {counter}
             current base num:    {base_num}
             object data dir:     {obj_data_dir}
             object index:        {obj_counter}
@@ -166,6 +196,18 @@ def pursuit(z_dim,
         max_val_acc = 0.0
         write_log(log_file, "\n=============================start new object==============================")
         write_log(log_file, new_obj_info)
+        
+        # ========================================================================================================
+        # check if current object has been seen
+        seen, acc, z_file = have_seen(new_obj_dataset, device, z_dir, z_dim, hypernet, backbone, express_threshold, start_index=init_objects_num)
+        if seen:
+            write_log(log_file, f"Current object has been seen! corresponding z file: {z_file}, express accuracy: {acc}")
+            new_obj_dataset, obj_data_dir = dataSelector.next()
+            shutil.rmtree(obj_dir)
+            write_log(log_file, "\n===============================end object==================================")
+            continue
+        else:
+            write_log(log_file, f"Current object is novel, max acc: {acc}, most similiar object: {z_file}, start object pursuit")
         
         # ========================================================================================================
         # (first check) test if a new object can be expressed by other objects
@@ -235,6 +277,7 @@ def pursuit(z_dim,
                         save_cp_path=check_express_dir,
                         z_dir=z_dir,
                         max_epochs=200,
+                        wait_epochs=5,
                         lr=1e-4,
                         acc_threshold=1.0)
             else:
