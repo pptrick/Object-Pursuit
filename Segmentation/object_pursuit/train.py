@@ -12,6 +12,7 @@ from loss.dice_loss import dice_coeff
 from loss.IoU_loss import IoULoss
 from loss.memory_loss import MemoryLoss
 from utils.pos_weight import get_pos_weight_from_batch
+from utils.util import *
 
 def set_eval(primary_net, hypernet, backbone=None):
     primary_net.eval()
@@ -24,15 +25,6 @@ def set_train(primary_net, hypernet, backbone=None):
     hypernet.train()
     if backbone is not None:
         backbone.train()
-        
-def create_dir(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
-        
-def write_log(log_file, string):
-    print(string)
-    log_file.write(string+'\n')
-    log_file.flush()
 
 def eval_net(net_type, primary_net, loader, device, hypernet, backbone=None, zs=None):
     """Evaluation without the densecrf with the dice coefficient"""

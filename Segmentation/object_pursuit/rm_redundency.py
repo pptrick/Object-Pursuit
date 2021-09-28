@@ -6,8 +6,9 @@ from model.coeffnet.hypernet import Hypernet
 from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
 from object_pursuit.pursuit import get_z_bases, freeze
-from object_pursuit.train import train_net, create_dir
+from object_pursuit.train import train_net
 from dataset.basic_dataset import BasicDataset
+from utils.util import *
 
 def simplify_bases(log_dir, output_dir, base_path, record_path, hypernet_path, backbone_path, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'), z_dim=100, resize=(256, 256), threshold=0.7):
     create_dir(log_dir)

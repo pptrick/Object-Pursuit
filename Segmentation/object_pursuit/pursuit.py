@@ -9,7 +9,8 @@ from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
 from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector
 from utils.GenBases import genBases
-from object_pursuit.train import train_net, create_dir, write_log, have_seen
+from object_pursuit.train import train_net, have_seen
+from utils.util import *
 
 def get_z_bases(z_dim, base_path, device):
     if os.path.isdir(base_path):

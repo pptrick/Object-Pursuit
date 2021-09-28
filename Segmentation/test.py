@@ -1,7 +1,25 @@
-from evaluation.seen_obj import test_seen_obj
+import os
+
+from evaluation.seen_obj import test_seen_obj, test_unseen_obj
+from utils.util import *
 
 if __name__ == "__main__":
-    test_seen_obj(data_dir='/data/pancy/iThor/single_obj/FloorPlan2_ext/data_FloorPlan2_Bowl_3',
-                  z_dir='./checkpoints_random_1_threshold_0.7/zs/', 
-                  hypernet_path='./checkpoints_random_1_threshold_0.7/checkpoint/hypernet.pth',
-                  backbone_path='./checkpoints_random_1_threshold_0.7/checkpoint/backbone.pth')
+    thres = 0.8
+    rd = 32
+    test_dir = f"./checkpoints_test_{thres}_round_{rd}"
+    create_dir(test_dir)
+    
+    test_unseen_obj(obj_dir="/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test",
+                    z_dir=f'./checkpoints_sequence_threshold_{thres}/checkpoint/checkpoint_round_{rd}/zs/', 
+                    hypernet_path=f'./checkpoints_sequence_threshold_{thres}/checkpoint/checkpoint_round_{rd}/hypernet.pth',
+                    backbone_path=f'./checkpoints_sequence_threshold_{thres}/checkpoint/backbone.pth',
+                    log_name=os.path.join(test_dir, "test_unseen_log.txt"),
+                    threshold=thres+0.01)
+    
+    test_seen_obj(obj_info='./checkpoints_rm_redundancy_0.9/base_info.json',
+                  z_info='./checkpoints_below_acc/base_info.json',
+                  z_dir=f'./checkpoints_sequence_threshold_{thres}/checkpoint/checkpoint_round_{rd}/zs/', 
+                  hypernet_path=f'./checkpoints_sequence_threshold_{thres}/checkpoint/checkpoint_round_{rd}/hypernet.pth',
+                  backbone_path=f'./checkpoints_sequence_threshold_{thres}/checkpoint/backbone.pth',
+                  log_name=os.path.join(test_dir, "test_seen_log.txt"),
+                  threshold=thres+0.01)
