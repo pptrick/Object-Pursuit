@@ -14,18 +14,18 @@ from utils.pos_weight import get_pos_weight_from_batch
 data_path = "/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2"
 prefix = "data_FloorPlan2_"
 
-dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=16, num_workers=8, prefix=prefix, resize=(256, 256))
+dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=64, num_workers=8, prefix=prefix, resize=(256, 256))
 obj_num = dataset.obj_num
 net = Multinet(obj_num=obj_num, z_dim=100, freeze_backbone=True).cuda()
-net =  nn.DataParallel(net, device_ids=[0])
+net =  nn.DataParallel(net, device_ids=[0, 1])
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=4e-6, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=5e-5, weight_decay=1e-7, momentum=0.9)
 
 criterion = nn.BCEWithLogitsLoss()
-# scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
+scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, mode='min', patience=6)
 
 epochs = 200
-checkpoints_path = './checkpoints_conv_small_full_simclr'
+checkpoints_path = './checkpoints_conv_small_full_frzbackbone'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
@@ -61,7 +61,7 @@ for epoch in range(epochs):
             true_masks = true_masks.to(dtype=mask_type).cuda()
             
             masks_pred, z = net(imgs, ident)
-            # loss = criterion(masks_pred, true_masks)
+            loss = criterion(masks_pred, true_masks)
             pos_weight = get_pos_weight_from_batch(true_masks)
             seg_loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([pos_weight]).cuda())
             l1_loss = 0.1 * F.l1_loss(z, torch.zeros(z.size()).to(z.device))
@@ -77,7 +77,7 @@ for epoch in range(epochs):
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
             
             if obj_step == 1:
-                # scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
+                scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
                 optimizer.step()
                 obj_step = 0
                 obj_loss_rec = []
