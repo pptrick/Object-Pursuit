@@ -25,7 +25,7 @@ criterion = nn.BCEWithLogitsLoss()
 # scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, mode='min', patience=10)
 
 epochs = 200
-checkpoints_path = './checkpoints_conv_small_full_frzbackbone'
+checkpoints_path = './checkpoints_conv_small_full_simclr'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")
