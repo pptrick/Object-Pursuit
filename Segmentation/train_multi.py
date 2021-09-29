@@ -19,10 +19,10 @@ obj_num = dataset.obj_num
 net = Multinet(obj_num=obj_num, z_dim=100, freeze_backbone=True).cuda()
 net =  nn.DataParallel(net, device_ids=[0, 1])
 
-optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=5e-5, weight_decay=1e-7, momentum=0.9)
+optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=5e-6, weight_decay=1e-7, momentum=0.9)
 
 criterion = nn.BCEWithLogitsLoss()
-scheduler_lr=optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, mode='min', patience=6)
+scheduler_lr=optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.7)
 
 epochs = 200
 checkpoints_path = './checkpoints_conv_small_full_frzbackbone'
@@ -77,7 +77,6 @@ for epoch in range(epochs):
             nn.utils.clip_grad_value_(net.parameters(), 0.1)
             
             if obj_step == 1:
-                scheduler_lr.step(sum(obj_loss_rec)/len(obj_loss_rec))
                 optimizer.step()
                 obj_step = 0
                 obj_loss_rec = []
@@ -99,5 +98,7 @@ for epoch in range(epochs):
                     log_writer.write(f"checkpoint saved ! \n")
                 checkpoint_rec = []
                 log_writer.flush()
+                
+        scheduler_lr.step()
                 
 log_writer.close()
