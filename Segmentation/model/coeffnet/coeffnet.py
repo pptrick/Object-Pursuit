@@ -1,6 +1,5 @@
 import collections
 import os
-from pickle import TRUE
 import re
 import math
 import torch
@@ -136,7 +135,7 @@ class Multinet(nn.Module):
 class Coeffnet(nn.Module):
     n_channels = 3
     n_classes = 1
-    def __init__(self, base_dir, z_dim, device, hypernet_path=None, param_dict=deeplab_param, nn_init=True):
+    def __init__(self, base_dir, z_dim, device, hypernet_path=None, backbone_path=None, param_dict=deeplab_param, nn_init=True):
         super(Coeffnet, self).__init__()
         self.z_dim = z_dim
         self.device = device
@@ -155,10 +154,12 @@ class Coeffnet(nn.Module):
         # forward
         self.combine_func = self._linear
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)
-        self._init_hypernet(hypernet_path)
+        if hypernet_path is not None:
+            self._init_hypernet(hypernet_path)
         
         self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
-        self._init_backbone(hypernet_path)
+        if backbone_path is not None:
+            self._init_backbone(backbone_path)
         
     def _get_z_bases(self, base_dir, device):
         if os.path.isdir(base_dir):

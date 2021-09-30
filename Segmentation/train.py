@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from eval import eval_net
 
-from dataset.basic_dataset import BasicDataset
+from dataset.basic_dataset import BasicDataset, BasicDataset_nshot
 from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
 from dataset.kitti_dataset import KittiTrainDataset, KittiTestDataset
 from dataset.visualize import vis_predict
@@ -28,10 +28,10 @@ from loss.memory_loss import MemoryLoss
 from loss.dice_loss import DiceCoeff
 
 obj_train = 'cows'
-obj = 'AlarmClock'
-dir_img = [f'/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2/data_FloorPlan2_{obj}/imgs']
-dir_mask = [f'/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_kitti_4'
+obj = 'Vase_10'
+dir_img = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/imgs']
+dir_mask = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/masks']
+dir_checkpoint = f'checkpoints_nshot/checkpoints_nshot_test_Vase_10'
 
 acc = []
 
@@ -46,7 +46,15 @@ def train_net(args,
               img_scale=0.5,
               use_mem_loss=False):
 
-    # dataset = BasicDataset(dir_img, dir_mask, resize=(256, 256), train=True)
+    test_dataset = BasicDataset(dir_img, dir_mask, resize=(256, 256))
+    train_dataset = BasicDataset_nshot(dir_img, dir_mask, n=1, resize=(256, 256), shuffle_seed=4)
+    n_val = 400
+    n_rest = len(test_dataset) - n_val
+    n_train = len(train_dataset)
+    val, _ = random_split(test_dataset, [n_val, n_rest], generator=torch.Generator().manual_seed(40))
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    
     # train_percent = 0.9
     # val_percent = 0.1
     # n_val = int(len(dataset) * val_percent)
@@ -59,12 +67,12 @@ def train_net(args,
     # oneshot_dataset = OneshotDavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
     # oneshot_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj_train, resize=(256, 256))
     # norm_dataset = DavisDataset('/orion/u/pancy/data/object-pursuit/davis/DAVIS', obj, resize=(256, 256))
-    oneshot_dataset = KittiTrainDataset('/orion/u/pancy/data/object-pursuit/kitti/4')
-    norm_dataset = KittiTestDataset('/orion/u/pancy/data/object-pursuit/kitti/4')
-    n_train = len(oneshot_dataset)
-    n_val = len(norm_dataset)
-    train_loader = DataLoader(oneshot_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(norm_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    # oneshot_dataset = KittiTrainDataset('/orion/u/pancy/data/object-pursuit/kitti/4')
+    # norm_dataset = KittiTestDataset('/orion/u/pancy/data/object-pursuit/kitti/4')
+    # n_train = len(oneshot_dataset)
+    # n_val = len(norm_dataset)
+    # train_loader = DataLoader(oneshot_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+    # val_loader = DataLoader(norm_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
     
     if not os.path.exists(dir_checkpoint):
         os.mkdir(dir_checkpoint)
@@ -141,11 +149,11 @@ def train_net(args,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
-                if global_step % int(n_train / (0.05*batch_size)) == 0:
+                if global_step % int(n_train / (batch_size)) == 0:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
                     val_score = 0
-                    # val_score, _ = eval_net(net, val_loader, device)
+                    val_score, _ = eval_net(net, val_loader, device)
                     acc.append(val_score)
                     val_list.append(val_score)
                     # scheduler.step(val_score)
@@ -165,9 +173,8 @@ def train_net(args,
 
         if len(val_list) > 0:
             avg_valid_acc = sum(val_list)/len(val_list)
-            vis_predict(os.path.join(dir_checkpoint, 'viz_pred'), net, val_loader, device)
             if avg_valid_acc > max_valid_acc:
-                vis_predict(os.path.join(dir_checkpoint, 'viz_pred'), net, val_loader, device)
+                # vis_predict(os.path.join(dir_checkpoint, 'viz_pred'), net, val_loader, device)
                 if save_cp:
                     if args.model == 'singlenet':    
                         torch.save(net.state_dict(), os.path.join(dir_checkpoint, f'Best.pth'))
@@ -196,7 +203,7 @@ def get_args():
                         help='Percent of the data that is used as validation (0-100)')
     parser.add_argument('--cuda', dest='cuda', type=int, default=0,
                         help='cuda device number')
-    parser.add_argument('--model', type=str, default='singlenet',
+    parser.add_argument('--model', type=str, default='coeffnet',
                         choices=['coeffnet', 'deeplab', 'unet', 'singlenet'],
                         help='model name')
 
@@ -220,14 +227,17 @@ if __name__ == '__main__':
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
     elif args.model == "deeplab":
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=True)
+        net.init_backbone(None, freeze=True)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
         path = "./checkpoints_conv_small_full/checkpoint.pth"
         net.init_hypernet(path, freeze=True)
-        net.init_backbone(path)
+        net.init_backbone(path, freeze=True)
     elif args.model == "coeffnet":
-        path = "./checkpoints_conv_small_full/checkpoint.pth"
-        net = Coeffnet(base_dir='./Bases', z_dim=100, device=device, hypernet_path=path)
+        hypernet_path = "./checkpoints_sequence_threshold_0.7/checkpoint/hypernet.pth"
+        backbone_path = "./checkpoints_sequence_threshold_0.7/checkpoint/backbone.pth"
+        base_dir = "./checkpoints_sequence_threshold_0.7/Bases/"
+        net = Coeffnet(base_dir=base_dir, z_dim=100, device=device, hypernet_path=hypernet_path, backbone_path=backbone_path)
     else:
         raise NotImplementedError
     

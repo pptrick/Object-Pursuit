@@ -4,8 +4,8 @@ from evaluation.seen_obj import test_seen_obj, test_unseen_obj
 from utils.util import *
 
 if __name__ == "__main__":
-    thres = 0.85
-    rd = 24
+    thres = 0.75
+    rd = 48
     test_dir = f"./checkpoints_test/checkpoints_test_{thres}_round_{rd}"
     create_dir(test_dir)
     

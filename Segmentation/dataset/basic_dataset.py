@@ -4,6 +4,7 @@ from os import listdir
 import numpy as np
 from glob import glob
 import torch
+import random
 from torch.utils.data import Dataset
 from PIL import Image
 
@@ -13,7 +14,7 @@ import dataset.custom_transforms as tr
 
 
 class BasicDataset(Dataset):
-    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False):
+    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False, shuffle_seed=None):
         self.imgs_dir = self._parse_dirs(imgs_dir)
         self.masks_dir = self._parse_dirs(masks_dir)
         self.resize = resize
@@ -23,6 +24,11 @@ class BasicDataset(Dataset):
         self._get_ids()
         # logging.info(f'Creating dataset with {len(self.ids)} examples')
         print(f'Creating dataset with {len(self.ids)} examples')
+        
+        if shuffle_seed is not None:
+            r = random.random
+            random.seed(shuffle_seed)
+            random.shuffle(self.ids, random=r)
         
     def _parse_dirs(self, dirs):
         if type(dirs) == list:
@@ -41,12 +47,13 @@ class BasicDataset(Dataset):
                 root = os.path.dirname(img_dir)
             mask_dir = os.path.join(root, "masks")
             if mask_dir in self.masks_dir or (mask_dir+'/') in self.masks_dir:
-                idx = [splitext(file)[0] for file in listdir(img_dir) if not file.startswith('.')]
+                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if not file.startswith('.')]
                 img_dirs = [img_dir] * len(idx)
                 mask_dirs = [mask_dir] * len(idx)
                 self.ids += zip(idx, img_dirs, mask_dirs)
             else:
                 print("[Warning] can't find mask dir: ", mask_dir)
+        
 
     def __len__(self):
         return len(self.ids)
@@ -70,8 +77,11 @@ class BasicDataset(Dataset):
 
         return img_trans
     
+    def _get_idx(self, index):
+        return self.ids[index]
+    
     def _make_img_gt_point_pair(self, index):
-        idx = self.ids[index]
+        idx = self._get_idx(index)
         mask_file = glob(os.path.join(os.path.join(idx[2], idx[0] + self.mask_suffix + '.*')))
         img_file = glob(os.path.join(idx[1], idx[0] + '.*'))
         
@@ -95,6 +105,8 @@ class BasicDataset(Dataset):
     def __getitem__(self, i):
         img, mask, img_file, mask_file = self._make_img_gt_point_pair(i)
         sample = {'image': img, 'mask': mask}
+        
+        # print(f"img file: {img_file}")
         
         if self.train:
             sample = self.transform_tr(sample)
@@ -122,6 +134,13 @@ class BasicDataset(Dataset):
         return composed_transforms(sample)
 
 
+class BasicDataset_nshot(BasicDataset):
+    def __init__(self, imgs_dir, masks_dir, n=1, resize=None, mask_suffix='', train=False, shuffle_seed=None):
+        super().__init__(imgs_dir, masks_dir, resize=resize, mask_suffix=mask_suffix, train=train, shuffle_seed=shuffle_seed)
+        self.n = n
+        
+    def _get_idx(self, index):
+        return self.ids[index % self.n]
 
         
 if __name__ == "__main__":

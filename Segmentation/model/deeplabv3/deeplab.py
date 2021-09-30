@@ -1,3 +1,6 @@
+import os
+import re
+import collections
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -83,6 +86,24 @@ class DeepLab(nn.Module):
                         for p in m[1].parameters():
                             if p.requires_grad:
                                 yield p
+                                
+    def init_backbone(self, backbone_path, freeze = True):
+        if backbone_path is not None:
+            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth"))
+            state_dict = torch.load(backbone_path)
+            backbone_dict = collections.OrderedDict()
+            for param in state_dict:
+                if param.startswith("backbone."):
+                    new_param = re.match(r'backbone\.(.+)', param).group(1)
+                    backbone_dict[new_param] = state_dict[param]
+                elif param.startswith("module."):
+                    new_param = re.match(r'module\.(.+)', param).group(1)
+                    backbone_dict[new_param] = state_dict[param]
+            self.backbone.load_state_dict(backbone_dict)
+        # freeze backbone
+        if freeze:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
 
 if __name__ == "__main__":
     model = DeepLab(backbone='mobilenet', output_stride=16)
