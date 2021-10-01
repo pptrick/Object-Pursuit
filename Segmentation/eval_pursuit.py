@@ -34,8 +34,8 @@ if __name__ == "__main__":
     net = Singlenet(z_dim=100, device=device)
     net.to(device=device)
     # net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
-    net.init_hypernet('./checkpoints_old_tests/checkpoints_sequence_threshold_0.8/checkpoint/hypernet.pth')
-    net.init_backbone('./checkpoints_old_tests/checkpoints_sequence_threshold_0.8/checkpoint/backbone.pth')
+    net.init_hypernet('./checkpoints_old_tests/checkpoints_beta_0.0/checkpoint/hypernet.pth')
+    net.init_backbone('./checkpoints_old_tests/checkpoints_beta_0.0/checkpoint/backbone.pth')
     # net.init_backbone(hypernet_param_path)
     net.load_z(z_path)
     print(f"load hypernet param from {hypernet_param_path} \n"

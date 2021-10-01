@@ -96,7 +96,7 @@ def test_unseen_obj(obj_dir, z_dir, hypernet_path, backbone_path, log_name, thre
     unseen_count = 0
     for data_dir in data_dirs:
         write_log(log_file, f"Start testing object {data_dir}...")
-        test_acc, test_index, test_zf = test_unit(data_dir, z_dir, hypernet_path, backbone_path, start_index=45)
+        test_acc, test_index, test_zf = test_unit(data_dir, z_dir, hypernet_path, backbone_path, start_index=31)
         total_count += 1
         if test_acc > threshold:
             seen_count += 1
