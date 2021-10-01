@@ -53,9 +53,9 @@ def simplify_bases(log_dir, output_dir, base_path, record_path, hypernet_path, b
                       save_cp_path=cp_dir,
                       batch_size=64,
                       max_epochs=200,
-                      lr=1e-4,
-                      acc_threshold=0.85)
-            if max_val_acc > 0.85:
+                      lr=4e-4,
+                      acc_threshold=threshold)
+            if max_val_acc > threshold:
                 obj['valid'] = False
             print(f"for obj {obj['obj_name']}, current base num {len(zs)}, max acc {max_val_acc}, valid: {obj['valid']}")
     # save

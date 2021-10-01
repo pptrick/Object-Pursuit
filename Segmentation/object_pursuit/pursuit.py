@@ -2,6 +2,7 @@ from itertools import count
 import os
 import torch
 import shutil
+import json
 
 from tqdm import tqdm
 from model.coeffnet.hypernet import Hypernet
@@ -111,6 +112,7 @@ def pursuit(z_dim,
     create_dir(checkpoint_dir)
     log_file = open(os.path.join(output_dir, "pursuit_log.txt"), "w")
     write_log(log_file, "[Exp Info] "+log_info)
+    z_info = []
     
     # prepare bases
     if pretrained_bases is not None and os.path.isfile(pretrained_bases):
@@ -227,7 +229,8 @@ def pursuit(z_dim,
                       save_cp_path=coeff_pursuit_dir,
                       z_dir=z_dir,
                       max_epochs=200,
-                      lr=1e-4)
+                      lr=1e-4,
+                      l1_loss_coeff=0.2)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
         # ==========================================================================================================
         # (train as a new base) if not, train this object as a new base
@@ -247,7 +250,8 @@ def pursuit(z_dim,
                       max_epochs=200,
                       wait_epochs=5,
                       lr=1e-4,
-                      l1_loss_coeff=0.1)
+                      l1_loss_coeff=0.1,
+                      mem_loss_coeff=0.04)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
             
             # if the object is invalid
@@ -280,7 +284,8 @@ def pursuit(z_dim,
                         max_epochs=200,
                         wait_epochs=5,
                         lr=1e-4,
-                        acc_threshold=1.0)
+                        acc_threshold=1.0,
+                        l1_loss_coeff=0.2)
             else:
                 max_val_acc = 0.0
             
@@ -302,6 +307,14 @@ def pursuit(z_dim,
             # save object's z
             write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")    
             coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), bases, hypernet)
+            
+        z_info.append({
+            "index": obj_counter,
+            "data_dir": obj_data_dir,
+            "z_file": f"z_{'%04d' % obj_counter}.json"
+        })
+        with open(os.path.join(output_dir, "z_info.json"), "w") as f:
+            json.dump(z_info, f)
         
         write_log(log_file, f"save hypernet and backbone to {checkpoint_dir}, move to next object")     
         new_obj_dataset, obj_data_dir = dataSelector.next()

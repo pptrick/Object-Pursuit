@@ -84,7 +84,8 @@ def train_net(z_dim,
               val_percent=0.1,
               wait_epochs=3,
               acc_threshold=0.90,
-              l1_loss_coeff=0.2):
+              l1_loss_coeff=0.2,
+              mem_loss_coeff=0.04):
     # set logger
     log_file = open(os.path.join(save_cp_path, "log.txt"), "w")
 
@@ -125,7 +126,7 @@ def train_net(z_dim,
     
     if net_type == "singlenet":
         MemLoss = MemoryLoss(Base_dir=z_dir, device=device)
-        mem_coeff = 0.04
+        mem_coeff = mem_loss_coeff
         
     global_step = 0
     max_valid_acc = 0
