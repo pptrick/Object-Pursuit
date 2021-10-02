@@ -7,16 +7,16 @@ from object_pursuit.rm_redundency import simplify_bases
 
 pursuit(z_dim=100, 
         data_dir="/orion/u/pancy/data/object-pursuit/ithor/Dataset/Train",
-        output_dir="./checkpoints_old_tests/checkpoints_beta_0.0",
+        output_dir="./checkpoints_alpha2_0.0",
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-        initial_zs="./checkpoints_old_tests/Bases_zs/",
-        pretrained_bases="./checkpoints_old_tests/Bases_0.9/",
-        pretrained_backbone="./checkpoints_conv_small_full/checkpoint.pth",
-        pretrained_hypernet="./checkpoints_conv_small_full/checkpoint.pth",
+        initial_zs="./Bases/",
+        pretrained_bases="./Bases/",
+        pretrained_backbone="./checkpoints_conv_small_full_frzbackbone/checkpoint.pth",
+        pretrained_hypernet="./checkpoints_conv_small_full_frzbackbone/checkpoint.pth",
         resize=(256, 256),
         select_strat="sequence",
-        express_threshold=0.7,
-        log_info="Data: sequence; threshold: 0.7")
+        express_threshold=0.6,
+        log_info="Data: sequence; threshold: 0.6")
 
 # simplify_bases(log_dir='./checkpoints_simple_zs/',
 #                output_dir='./Bases/',

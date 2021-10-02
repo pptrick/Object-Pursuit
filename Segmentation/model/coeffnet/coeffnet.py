@@ -146,11 +146,12 @@ class Coeffnet(nn.Module):
         # self.coeffs = nn.Parameter(torch.tensor([-0.00848394 , 0.35106376 ,-0.10851663 , 0.9120488 ]))
         if nn_init:
             self.coeffs = nn.Parameter(torch.randn(self.base_num))
-            self.init_value = 1.0/math.sqrt(self.base_num)
+            self.init_value = 0.0 #1.0/math.sqrt(self.base_num)
             torch.nn.init.constant_(self.coeffs, self.init_value)
+            self.coeffs.data[36] = 1.0
         else:
             self.coeffs = nn.Parameter(torch.randn(self.base_num))
-            
+        
         # forward
         self.combine_func = self._linear
         self.hypernet = Hypernet(z_dim, param_dict=param_dict)

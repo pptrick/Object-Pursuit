@@ -5,7 +5,7 @@ from utils.util import *
 
 if __name__ == "__main__":
     thres = 0.6
-    rd = 24
+    rd = 56
     test_dir = f"./checkpoints_test_new/checkpoints_test_{thres}_round_{rd}"
     create_dir(test_dir)
     

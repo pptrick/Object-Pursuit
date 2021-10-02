@@ -103,7 +103,7 @@ def test_unseen_obj(obj_dir, z_dir, hypernet_path, backbone_path, log_name, thre
             write_log(log_file, f"find a seen object! test acc {test_acc}, index {test_index}, test z file {test_zf}")
         else:
             unseen_count += 1
-            write_log(log_file, f"find a unseen object! test acc {test_acc}")
+            write_log(log_file, f"find a unseen object! test acc {test_acc}, index {test_index}, test z file {test_zf}")
     res_info = f'''test on seen objects:
         total count:                            {total_count}
         seen count:                             {seen_count}

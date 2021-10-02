@@ -11,7 +11,8 @@ from torch import optim
 from torch.nn.modules import loss
 from tqdm import tqdm
 
-from eval import eval_net
+# from eval import eval_net
+from evaluation.eval_net import eval_net
 
 from dataset.basic_dataset import BasicDataset, BasicDataset_nshot
 from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
@@ -28,10 +29,10 @@ from loss.memory_loss import MemoryLoss
 from loss.dice_loss import DiceCoeff
 
 obj_train = 'cows'
-obj = 'Vase_10'
+obj = 'Potato_10'
 dir_img = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/imgs']
 dir_mask = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_nshot/checkpoints_nshot_test_Vase_10'
+dir_checkpoint = f'checkpoints_nshot/checkpoints_nshot_test_Apple_14'
 
 acc = []
 
@@ -47,7 +48,7 @@ def train_net(args,
               use_mem_loss=False):
 
     test_dataset = BasicDataset(dir_img, dir_mask, resize=(256, 256))
-    train_dataset = BasicDataset_nshot(dir_img, dir_mask, n=1, resize=(256, 256), shuffle_seed=4)
+    train_dataset = BasicDataset_nshot(dir_img, dir_mask, n=5, resize=(256, 256), shuffle_seed=4)
     n_val = 400
     n_rest = len(test_dataset) - n_val
     n_train = len(train_dataset)
@@ -149,7 +150,7 @@ def train_net(args,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
-                if global_step % int(n_train / (batch_size)) == 0:
+                if global_step % int(n_train / (batch_size)) == 1:
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
                     val_score = 0
@@ -236,7 +237,7 @@ if __name__ == '__main__':
     elif args.model == "coeffnet":
         hypernet_path = "./checkpoints_sequence_threshold_0.7/checkpoint/hypernet.pth"
         backbone_path = "./checkpoints_sequence_threshold_0.7/checkpoint/backbone.pth"
-        base_dir = "./checkpoints_sequence_threshold_0.7/Bases/"
+        base_dir = "./checkpoints_sequence_threshold_0.7/zs/"
         net = Coeffnet(base_dir=base_dir, z_dim=100, device=device, hypernet_path=hypernet_path, backbone_path=backbone_path)
     else:
         raise NotImplementedError

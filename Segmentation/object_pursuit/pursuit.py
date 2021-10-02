@@ -250,8 +250,8 @@ def pursuit(z_dim,
                       max_epochs=200,
                       wait_epochs=5,
                       lr=1e-4,
-                      l1_loss_coeff=0.1,
-                      mem_loss_coeff=0.04)
+                      l1_loss_coeff=0.0,
+                      mem_loss_coeff=0.1)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
             
             # if the object is invalid
