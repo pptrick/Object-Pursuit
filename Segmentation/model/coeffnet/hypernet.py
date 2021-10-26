@@ -14,12 +14,6 @@ class HypernetBlock(nn.Module):
         self.in_size = in_size
         self.out_size = out_size
         
-        # self.w1 = Parameter(torch.fmod(torch.randn((self.z_dim, self.out_size*self.kernel_size*self.kernel_size)),2))
-        # self.b1 = Parameter(torch.fmod(torch.randn((self.out_size*self.kernel_size*self.kernel_size)),2))
-
-        # self.w2 = Parameter(torch.fmod(torch.randn((self.z_dim, self.in_size*self.z_dim)),2))
-        # self.b2 = Parameter(torch.fmod(torch.randn((self.in_size*self.z_dim)),2))
-        
         self.w1 = Parameter(torch.fmod(torch.randn((self.z_dim, self.in_size*self.out_size*self.kernel_size*self.kernel_size)),2))
         self.b1 = Parameter(torch.fmod(torch.randn((self.in_size*self.out_size*self.kernel_size*self.kernel_size)),2))
         
@@ -30,9 +24,6 @@ class HypernetBlock(nn.Module):
         self.b_bn2 = Parameter(torch.fmod(torch.randn((self.out_size)),2))
         
     def forward(self, z):
-        # h_in = torch.matmul(z, self.w2) + self.b2
-        # h_in = h_in.view(self.in_size, self.z_dim)
-
         h_final = torch.matmul(z, self.w1) + self.b1
         kernel = h_final.view(self.out_size, self.in_size, self.kernel_size, self.kernel_size)
         

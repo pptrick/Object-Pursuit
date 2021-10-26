@@ -34,7 +34,7 @@ def deeplab_forward_no_backbone(input, x, low_level_feat, weights):
 class Singlenet(nn.Module):
     n_channels = 3
     n_classes = 1
-    def __init__(self, z_dim, device, param_dict=deeplab_param, use_backbone=True, freeze_backbone=True):
+    def __init__(self, z_dim, device, use_backbone=True, freeze_backbone=True):
         super(Singlenet, self).__init__()
         self.z_dim = z_dim
         self.device = device
@@ -150,7 +150,7 @@ class Multinet(nn.Module):
 class Coeffnet(nn.Module):
     n_channels = 3
     n_classes = 1
-    def __init__(self, base_dir, z_dim, device, hypernet_path=None, backbone_path=None, param_dict=deeplab_param, nn_init=True, index=None):
+    def __init__(self, base_dir, z_dim, device, use_backbone=True, hypernet_path=None, backbone_path=None, nn_init=True, index=None):
         super(Coeffnet, self).__init__()
         self.z_dim = z_dim
         self.device = device
@@ -158,25 +158,32 @@ class Coeffnet(nn.Module):
         
         # base & coeffs
         self.zs, self.base_num = self._get_z_bases(base_dir, device)
-        # self.coeffs = nn.Parameter(torch.tensor([-0.00848394 , 0.35106376 ,-0.10851663 , 0.9120488 ]))
-        if nn_init:
-            self.coeffs = nn.Parameter(torch.randn(self.base_num))
-            self.init_value = 0.0 #1.0/math.sqrt(self.base_num)
-            torch.nn.init.constant_(self.coeffs, self.init_value)
-            if index is not None:
-                self.coeffs.data[index] = 1.0
-        else:
-            self.coeffs = nn.Parameter(torch.randn(self.base_num))
         
-        # forward
+        self.coeffs = nn.Parameter(torch.randn(self.base_num))
+        if nn_init:
+            if index is not None:
+                self.init_value = 0.0 #1.0/math.sqrt(self.base_num)
+                torch.nn.init.constant_(self.coeffs, self.init_value)
+                self.coeffs.data[index] = 1.0
+            else:
+                self.init_value = 1.0/math.sqrt(self.base_num)
+                torch.nn.init.constant_(self.coeffs, self.init_value)
+        
+        #forward
         self.combine_func = self._linear
-        self.hypernet = Hypernet(z_dim, param_dict=param_dict)
+        if use_backbone:
+            self.hypernet = Hypernet(z_dim, param_dict=deeplab_param_decoder)
+        else:
+            self.hypernet = Hypernet(z_dim, param_dict=deeplab_param)
         if hypernet_path is not None:
             self._init_hypernet(hypernet_path)
         
-        self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
-        if backbone_path is not None:
-            self._init_backbone(backbone_path)
+        self.use_backbone = use_backbone
+        
+        if use_backbone:
+            self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
+            if backbone_path is not None:
+                self._init_backbone(backbone_path)
         
     def _get_z_bases(self, base_dir, device):
         if os.path.isdir(base_dir):
@@ -240,8 +247,10 @@ class Coeffnet(nn.Module):
     def forward(self, input):
         new_z = self.combine_func(self.zs, self.coeffs)
         weights = self.hypernet(new_z)
-        # return deeplab_forward(input, weights)
         
-        # backbone forward
-        x, low_level_feat = self.backbone(input)
-        return deeplab_forward_no_backbone(input, x, low_level_feat, weights)
+        if not self.use_backbone:
+            return deeplab_forward(input, weights)
+        else:
+            # backbone forward
+            x, low_level_feat = self.backbone(input)
+            return deeplab_forward_no_backbone(input, x, low_level_feat, weights)
