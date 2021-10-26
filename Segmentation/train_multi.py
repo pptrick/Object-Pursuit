@@ -16,7 +16,7 @@ prefix = "data_FloorPlan2_"
 
 dataloader, dataset = Multiobj_Dataloader(data_dir=data_path, batch_size=64, num_workers=8, prefix=prefix, resize=(256, 256))
 obj_num = dataset.obj_num
-net = Multinet(obj_num=obj_num, z_dim=100, freeze_backbone=True).cuda()
+net = Multinet(obj_num=obj_num, z_dim=50, freeze_backbone=True, use_backbone=True).cuda()
 net =  nn.DataParallel(net, device_ids=[0, 1])
 
 optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=5e-6, weight_decay=1e-7, momentum=0.9)
@@ -24,8 +24,8 @@ optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), l
 criterion = nn.BCEWithLogitsLoss()
 scheduler_lr=optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.7)
 
-epochs = 200
-checkpoints_path = './checkpoints_conv_small_full_frzbackbone'
+epochs = 300
+checkpoints_path = './checkpoints_conv_small_z_50'
 if not os.path.exists(checkpoints_path):
     os.mkdir(checkpoints_path)
 log_writer = open(os.path.join(checkpoints_path, "log.txt"), "w")

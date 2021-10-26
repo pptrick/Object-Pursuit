@@ -44,8 +44,8 @@ def eval_net(net, loader, ident, device):
     return tot / n_val
 
 if __name__ == "__main__":
-    checkpoint_path = './checkpoints_conv_small_full_frzbackbone/checkpoint.pth'
-    rec_path = './checkpoints_conv_small_full_frzbackbone/record.json'
+    checkpoint_path = './checkpoints_conv_allweights/checkpoint.pth'
+    rec_path = './checkpoints_conv_allweights/record.json'
     data_path = "/orion/u/pancy/data/object-pursuit/ithor/FloorPlan2"
     prefix = "data_FloorPlan2_"
     cuda = 0
@@ -59,13 +59,14 @@ if __name__ == "__main__":
     print(obj_map)
 
     device = torch.device('cuda:'+str(cuda) if torch.cuda.is_available() else 'cpu')
-    net = Multinet(obj_num=len(obj_map), z_dim=100)
+    net = Multinet(obj_num=len(obj_map), z_dim=100, use_backbone=False)
     net.load_state_dict(torch.load(checkpoint_path, map_location=device))
     net.to(device=device)
 
     print(f"load checkpoints from {checkpoint_path}")
     
     record_list = []
+    res_list = []
 
     for obj in obj_map:
         ident = torch.tensor([obj_map[obj]]).to(device)
@@ -84,6 +85,7 @@ if __name__ == "__main__":
         eval_loader = DataLoader(eval_dataset, batch_size=16, shuffle=False, num_workers=8, pin_memory=True, drop_last=True, sampler=eval_sampler)
         
         res = eval_net(net, eval_loader, ident, device)
+        res_list.append(res)
         print(f"Object: {obj}, identity: {ident[0].item()}, dataset size: {n_size}, avg eval coeff: {res}")
         record = {'acc': res, 
                   'data_dir': data_dir,
@@ -93,6 +95,7 @@ if __name__ == "__main__":
         record_list.append(record)
         
     print("Final results: ", record_list)
+    print("Average res: ", sum(res_list)/len(res_list))
     with open(rec_path, 'w') as f:
         json.dump(record_list, f)
     # torch.save(net.state_dict(),'./checkpoints_equal/checkpoint_test.pth')

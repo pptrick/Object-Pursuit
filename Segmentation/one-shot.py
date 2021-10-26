@@ -28,17 +28,13 @@ from utils.pos_weight import get_pos_weight_from_batch
 from loss.memory_loss import MemoryLoss
 from loss.dice_loss import DiceCoeff
 
-obj_train = 'cows'
-obj = 'Bowl_10'
-dir_img = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/imgs']
-dir_mask = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/masks']
-dir_checkpoint = f'checkpoints_nshot/checkpoints_nshot_test_Cup_10'
-
 acc = []
 
 def train_net(args,
               net,
               device,
+              n=1,
+              shuffle_seed=3,
               epochs=5,
               batch_size=1,
               lr=0.001,
@@ -48,7 +44,7 @@ def train_net(args,
               use_mem_loss=False):
 
     test_dataset = BasicDataset(dir_img, dir_mask, resize=(256, 256))
-    train_dataset = BasicDataset_nshot(dir_img, dir_mask, n=1, resize=(256, 256), shuffle_seed=3)
+    train_dataset = BasicDataset_nshot(dir_img, dir_mask, n=n, resize=(256, 256), shuffle_seed=shuffle_seed)
     n_val = 400
     n_rest = len(test_dataset) - n_val
     n_train = len(train_dataset)
@@ -91,6 +87,7 @@ def train_net(args,
         Images scaling:  {img_scale}
         dir_img:         {dir_img}
         dir_mask:        {dir_mask}
+        n-shot:          {n}
         parameter number of the network: {sum(x.numel() for x in net.parameters() if x.requires_grad)}
     '''
     logging.info(info_text)
@@ -190,7 +187,7 @@ def train_net(args,
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-e', '--epochs', metavar='E', type=int, default=100,
+    parser.add_argument('-e', '--epochs', metavar='E', type=int, default=20,
                         help='Number of epochs', dest='epochs')
     parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=16,
                         help='Batch size', dest='batchsize')
@@ -198,6 +195,12 @@ def get_args():
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')
+    parser.add_argument('-o', '--obj', dest='obj', type=str, default=False,
+                        help='object')
+    parser.add_argument('-t', '--thres', dest='thres', type=str, default=False,
+                        help='0.6')
+    parser.add_argument('-n', '--n', dest='num', type=int, default=1,
+                        help='n-shot n')
     parser.add_argument('-s', '--scale', dest='scale', type=float, default=1,
                         help='Downscaling factor of the images')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
@@ -224,6 +227,151 @@ if __name__ == '__main__':
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
     
+    n=args.num
+    obj = args.obj
+    thres = args.thres
+    chuanyu_dir = '/orion/u/pancy/project/Object-Pursuit/Segmentation'
+    dir_img = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/imgs']
+    dir_mask = [f'/orion/u/pancy/data/object-pursuit/ithor/Dataset/Test/data_FloorPlan2_{obj}/masks']
+    dir_checkpoint = f'checkpoints_nshot/{thres}/checkpoints_nshot_{obj}_n_{n}_{thres}'
+    
+    if not os.path.exists('./checkpoints_nshot/'):
+        os.mkdir('./checkpoints_nshot/')
+        
+    if not os.path.exists(f'checkpoints_nshot/{thres}/'):
+        os.mkdir(f'./checkpoints_nshot/{thres}/')
+    
+    if thres == '0.6':
+        index_map = {'Apple_14': 45,
+                    'Bowl_10': 56,
+                    'Cup_10': 42,
+                    'Pan_10': 39,
+                    'Bread_9': 63,
+                    'Bowl_9': 51,
+                    'Potato_10': 53,
+                    'Vase_10': 48,
+                    'Apple_9': 45,
+                    'Pan_8': 52,
+                    'Plate_8': 48,
+                    'Potato_9': 53,
+                    'Apple_10':44,
+                    'Apple_8':48,
+                    'Bowl_8':37,
+                    'Cup_8':36,
+                    'Cup_9':37,
+                    'Pan_9':44,
+                    'Bread_8':40,
+                    'Bread_9':63,
+                    'Potato_8':31,
+                    'Vase_9':53,
+                    'Vase_8':38,
+                    'Plate_9':38,
+                    'Plate_10':58}
+    elif thres == '0.5':
+        index_map = {'Apple_14': 43,
+                    'Bowl_10': 51,
+                    'Cup_10': 55,
+                    'Pan_10': 38,
+                    'Bread_9': 32,
+                    'Bowl_9': 47,
+                    'Potato_10': 31,
+                    'Vase_10': 55,
+                    'Apple_9': 33,
+                    'Pan_8': 48,
+                    'Plate_8': 50,
+                    'Potato_9': 31,
+                    'Apple_10':55,
+                    'Apple_8':47,
+                    'Bowl_8':36,
+                    'Cup_8':35,
+                    'Cup_9':36,
+                    'Pan_9':53,
+                    'Bread_8':39,
+                    'Bread_9':32,
+                    'Potato_8':31,
+                    'Vase_9':50,
+                    'Vase_8':37,
+                    'Plate_9':37,
+                    'Plate_10':31}
+    elif thres == '0.7':
+        index_map = {'Apple_14': 34,
+                    'Bowl_10': 54,
+                    'Cup_10': 42,
+                    'Pan_10': 39,
+                    'Bread_9': 32,
+                    'Bowl_9': 47,
+                    'Potato_10': 37,
+                    'Vase_10': 49,
+                    'Apple_9': 43,
+                    'Pan_8': 51,
+                    'Plate_8': 53,
+                    'Potato_9': 52,
+                    'Apple_10':44,
+                    'Apple_8':49,
+                    'Bowl_8':37,
+                    'Cup_8':37,
+                    'Cup_9':37,
+                    'Pan_9':44,
+                    'Bread_8':58,
+                    'Bread_9':32,
+                    'Potato_8':36,
+                    'Vase_9':53,
+                    'Vase_8':47,
+                    'Plate_9':38,
+                    'Plate_10':37}
+    elif thres == '0.8':
+        index_map = {'Apple_14': 34,
+                    'Bowl_10': 37,
+                    'Cup_10': 38,
+                    'Pan_10': 36,
+                    'Bread_9': 32,
+                    'Bowl_9': 44,
+                    'Potato_10': 48,
+                    'Vase_10': 47,
+                    'Apple_9': 39,
+                    'Pan_8': 49,
+                    'Plate_8': 50,
+                    'Potato_9': 48,
+                    'Apple_10':38,
+                    'Apple_8':47,
+                    'Bowl_8':40,
+                    'Cup_8':45,
+                    'Cup_9':45,
+                    'Pan_9':40,
+                    'Bread_8':32,
+                    'Bread_9':32,
+                    'Potato_8':41,
+                    'Vase_9':50,
+                    'Vase_8':35,
+                    'Plate_9':35,
+                    'Plate_10':40}
+    
+    seeds =     {'Apple_14': 3,
+                 'Bowl_10': 3,
+                 'Cup_10': 3,
+                 'Pan_10': 3,
+                 'Bread_9': 3,
+                 'Bowl_9': 4,
+                 'Potato_10': 4,
+                 'Vase_10': 4,
+                 'Apple_9': 3,
+                 'Pan_8': 3,
+                 'Plate_8': 3,
+                 'Potato_9': 3,
+                 'Apple_10':3,
+                 'Apple_8':3,
+                 'Bowl_8':3,
+                 'Cup_8':3,
+                 'Cup_9':3,
+                 'Pan_9':3,
+                 'Bread_8':3,
+                 'Bread_9':3,
+                 'Potato_8':3,
+                 'Vase_9':3,
+                 'Vase_8':3,
+                 'Plate_9':3,
+                 'Plate_10':3}
+    
     if args.model == "unet":
         net = UNet(n_channels=3, n_classes=1, bilinear=True)
     elif args.model == "deeplab":
@@ -231,14 +379,15 @@ if __name__ == '__main__':
         net.init_backbone(None, freeze=True)
     elif args.model == "singlenet":
         net = Singlenet(z_dim=100, device=device)
-        path = "./checkpoints_conv_small_full/checkpoint.pth"
-        net.init_hypernet(path, freeze=True)
-        net.init_backbone(path, freeze=True)
+        hypernet_path = f"{chuanyu_dir}/checkpoints_sequence_threshold_{thres}/checkpoint/hypernet.pth"
+        backbone_path = f"{chuanyu_dir}/checkpoints_sequence_threshold_{thres}/checkpoint/backbone.pth"
+        net.init_hypernet(hypernet_path, freeze=True)
+        net.init_backbone(backbone_path, freeze=True)
     elif args.model == "coeffnet":
-        hypernet_path = "./checkpoints_sequence_threshold_0.6/checkpoint/hypernet.pth"
-        backbone_path = "./checkpoints_sequence_threshold_0.6/checkpoint/backbone.pth"
-        base_dir = "./checkpoints_sequence_threshold_0.6/zs/"
-        net = Coeffnet(base_dir=base_dir, z_dim=100, device=device, hypernet_path=hypernet_path, backbone_path=backbone_path)
+        hypernet_path = f"{chuanyu_dir}/checkpoints_sequence_threshold_{thres}/checkpoint/hypernet.pth"
+        backbone_path = f"{chuanyu_dir}/checkpoints_sequence_threshold_{thres}/checkpoint/backbone.pth"
+        base_dir = f"{chuanyu_dir}/checkpoints_sequence_threshold_{thres}/zs/"
+        net = Coeffnet(base_dir=base_dir, z_dim=100, device=device, hypernet_path=hypernet_path, backbone_path=backbone_path, index=index_map[obj])
     else:
         raise NotImplementedError
     
@@ -257,7 +406,9 @@ if __name__ == '__main__':
     try:
         train_net(args=args,
                   net=net,
-                  epochs=20,
+                  n=n,
+                  shuffle_seed=seeds[obj],
+                  epochs=args.epochs,
                   batch_size=args.batchsize,
                   lr=args.lr,
                   device=device,

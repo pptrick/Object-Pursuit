@@ -9,17 +9,24 @@ from object_pursuit.pursuit import get_z_bases, freeze
 from object_pursuit.train import train_net
 from dataset.basic_dataset import BasicDataset
 from utils.util import *
+from model.coeffnet.config.deeplab_param import deeplab_param, deeplab_param_decoder
 
-def simplify_bases(log_dir, output_dir, base_path, record_path, hypernet_path, backbone_path, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'), z_dim=100, resize=(256, 256), threshold=0.7):
+def simplify_bases(log_dir, output_dir, base_path, record_path, hypernet_path, backbone_path, use_backbone=True, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'), z_dim=100, resize=(256, 256), threshold=0.7):
     create_dir(log_dir)
     create_dir(output_dir)
     # init hypernet and backbone
-    hypernet = Hypernet(z_dim)
+    if use_backbone:
+        hypernet = Hypernet(z_dim, param_dict=deeplab_param_decoder)
+    else:
+        hypernet = Hypernet(z_dim, param_dict=deeplab_param)
     init_hypernet(hypernet_path, hypernet, device, freeze=True)
     hypernet.to(device)
-    backbone = Backbone()
-    init_backbone(backbone_path, backbone, device, freeze=True)
-    backbone.to(device)
+    if use_backbone:
+        backbone = Backbone()
+        init_backbone(backbone_path, backbone, device, freeze=True)
+        backbone.to(device)
+    else:
+        backbone = None
     # load initial bases
     init_bases = get_z_bases(z_dim, base_path, device)
     # load base info

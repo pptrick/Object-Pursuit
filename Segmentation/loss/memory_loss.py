@@ -23,14 +23,10 @@ class MemoryLoss(nn.Module):
             self.z.append(records['z'])
             self.weights.append(records['weights'])
             
-    def _l2_loss(self, pred, gt):
-        loss = None
+    def _l2_loss(self, pred, gt, coeff=1.0):
         for param in gt:
-            if loss is None:
-                loss = torch.norm(pred[param]-gt[param])
-            else:
-                loss += torch.norm(pred[param]-gt[param])
-        return loss
+            loss = coeff * torch.norm(pred[param]-gt[param])
+            loss.backward()
             
     def forward(self, hypernet, mem_coeff):
         index_list = range(len(self.z))
@@ -42,6 +38,5 @@ class MemoryLoss(nn.Module):
         for i in index_list:
             pred_w = hypernet(self.z[i])
             gt_w = self.weights[i]
-            loss = mem_coeff * self._l2_loss(pred_w, gt_w)
-            loss.backward()
+            self._l2_loss(pred_w, gt_w, mem_coeff)
             

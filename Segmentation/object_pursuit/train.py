@@ -79,7 +79,7 @@ def train_net(z_dim,
               save_cp_path=None, 
               z_dir=None, 
               max_epochs=80, 
-              batch_size=64, 
+              batch_size=16, 
               lr=0.0004, 
               val_percent=0.1,
               wait_epochs=3,
@@ -148,7 +148,6 @@ def train_net(z_dim,
         val acc thres:   {acc_threshold}
         trainable parameter number of the primarynet: {sum(x.numel() for x in primary_net.parameters() if x.requires_grad)}
         trainable parameter number of the hypernet: {sum(x.numel() for x in hypernet.parameters() if x.requires_grad)}
-        trainable parameter number of the backbone: {sum(x.numel() for x in backbone.parameters() if x.requires_grad)}
     '''
     write_log(log_file, info_text)
         

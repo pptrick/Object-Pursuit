@@ -31,11 +31,11 @@ if __name__ == "__main__":
     data_size = args.data_size
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    net = Singlenet(z_dim=100, device=device)
+    net = Singlenet(z_dim=150, device=device)
     net.to(device=device)
     # net.load_state_dict(torch.load(hypernet_param_path, map_location=device))
-    net.init_hypernet('./checkpoints_old_tests/checkpoints_beta_0.0/checkpoint/hypernet.pth')
-    net.init_backbone('./checkpoints_old_tests/checkpoints_beta_0.0/checkpoint/backbone.pth')
+    net.init_hypernet('./checkpoints_pursuit_z_150/checkpoint/hypernet.pth')
+    net.init_backbone('./checkpoints_pursuit_z_150/checkpoint/backbone.pth')
     # net.init_backbone(hypernet_param_path)
     net.load_z(z_path)
     print(f"load hypernet param from {hypernet_param_path} \n"

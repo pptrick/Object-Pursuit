@@ -1,4 +1,3 @@
-from itertools import count
 import os
 import torch
 import shutil
@@ -12,6 +11,7 @@ from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector
 from utils.GenBases import genBases
 from object_pursuit.train import train_net, have_seen
 from utils.util import *
+from model.coeffnet.config.deeplab_param import deeplab_param, deeplab_param_decoder
 
 def get_z_bases(z_dim, base_path, device):
     if os.path.isdir(base_path):
@@ -100,7 +100,8 @@ def pursuit(z_dim,
             select_strat="sequence", 
             resize=None,
             express_threshold=0.7,
-            log_info="default"):
+            log_info="default",
+            use_backbone=True):
     # prepare for new pursuit dir
     create_dir(output_dir)
     base_dir = os.path.join(output_dir, "Bases")
@@ -123,16 +124,22 @@ def pursuit(z_dim,
             shutil.copy(f, base_dir)
     
     # build hypernet
-    hypernet = Hypernet(z_dim)
+    if use_backbone:
+        hypernet = Hypernet(z_dim, param_dict=deeplab_param_decoder)
+    else:
+        hypernet = Hypernet(z_dim, param_dict=deeplab_param)
     if pretrained_hypernet is not None:
         init_hypernet(pretrained_hypernet, hypernet, device)
     hypernet.to(device)
     
     # build backbone
-    backbone = Backbone()
-    if pretrained_backbone is not None:
-        init_backbone(pretrained_backbone, backbone, device, freeze=True)
-    backbone.to(device)
+    if use_backbone:
+        backbone = Backbone()
+        if pretrained_backbone is not None:
+            init_backbone(pretrained_backbone, backbone, device, freeze=True)
+        backbone.to(device)
+    else: # don't use backbone:
+        backbone = None
     
     # data selector
     dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1)
@@ -165,8 +172,11 @@ def pursuit(z_dim,
         pretrained (initial) base index:  0~{init_base_num-1}  
         initial (first) object index:     {obj_counter}
         express accuracy threshold:       {express_threshold}
+        use backbone:                     {use_backbone}
     '''
     write_log(log_file, pursuit_info)
+    if backbone is None:
+        write_log(log_file, "backbone is None !")
     
     new_obj_dataset, obj_data_dir = dataSelector.next()
     counter = 0
@@ -258,7 +268,8 @@ def pursuit(z_dim,
             if max_val_acc < express_threshold:
                 write_log(log_file, f"[Warning] current object (data path: {obj_data_dir}) is invalid! The validation acc should be at least {express_threshold}, current acc {max_val_acc}; All records will be removed !")
                 # reset backbone and hypernet
-                init_backbone(os.path.join(checkpoint_dir, f'backbone.pth'), backbone, device, freeze=True)
+                if backbone is not None:
+                    init_backbone(os.path.join(checkpoint_dir, f'backbone.pth'), backbone, device, freeze=True)
                 init_hypernet(os.path.join(checkpoint_dir, f'hypernet.pth'), hypernet, device, freeze=True)
                 new_obj_dataset, obj_data_dir = dataSelector.next()
                 shutil.rmtree(obj_dir)
@@ -321,7 +332,8 @@ def pursuit(z_dim,
         obj_counter += 1
         # save checkpoint
         torch.save(hypernet.state_dict(), os.path.join(checkpoint_dir, f'hypernet.pth'))
-        torch.save(backbone.state_dict(), os.path.join(checkpoint_dir, f'backbone.pth'))
+        if backbone is not None:
+            torch.save(backbone.state_dict(), os.path.join(checkpoint_dir, f'backbone.pth'))
         write_log(log_file, "\n===============================end object=================================")
         
     log_file.close()
