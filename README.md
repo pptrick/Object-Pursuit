@@ -14,7 +14,7 @@ Object Pursuit: An Object Space for Visual Understanding
   - `dataset`: constructing torch dataset. `basic_dataset.py` is for ithor synthetic data, `davis_dataset.py` and `kitti_dataset.py` is for DAVIS and KITTI dataset. (both real data)；Other files are some utils for data processing.
   - `model`: Networks and models in pursuit. The Implementation of the hypernetwork and the total network architecture are in `/coeffnet`; `deeplabv3` and `unet` are just test models to test segmentation backbones.
     - `/coeffnet/hypernet.py`: implement hypernetwork architecture
-    - `/coeffnet/hypernet_conv.py`: implement convolution hyper-block
+    - `/coeffnet/hypernet_block.py`: implement convolution hyper-block
     - `/coeffnet/deeplab_block`: implement deeplab that takes network weights as input.
   - `loss`: the loss criterions. we have implement dice loss, IOU loss.
     - `memory_loss.py`: The implementation of forgetting preventing term. Prevent the network from forgetting.
@@ -22,6 +22,11 @@ Object Pursuit: An Object Space for Visual Understanding
     - `seen_obj.py`: test for whether an object is seen/unseen.
     - `eval_net.py`: The evaluation unit.
   - `main.py`: to run the object pursuit algorithm
+  - `train.py`: training examples
   - `train_multi.py`: joint training on multiple bases. Also view as pre-train process.
   - `eval_multi.py`: evaluate joint training
   - `eval_pursuit`：evaluate pursuit process
+
+  ## Notes from pcy
+  - 对于网络结构，在`/Segmentation/model/coeffnet/readme.md`中有详细的说明；
+  - 如果需要进行one-shot或其他训练，可以参考`train.py`或者`one-shot.py`，但是这两个文件现在非常hard-code，需要根据需求进行修改；
