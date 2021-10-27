@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import collections
-
+from torch.nn.parameter import Parameter
 
 def init_weights_normal(m):
     if type(m) == nn.Linear:
@@ -46,6 +46,32 @@ class FCBlock(nn.Module):
 
     def forward(self, input):
         return self.net(input)
+    
+class HypernetFCBlock(nn.Module):
+    def __init__(self, z_dim, kernel_size, in_size, out_size):
+        super(HypernetFCBlock, self).__init__()
+        self.z_dim = z_dim
+        self.kernel_size = kernel_size
+        self.in_size = in_size
+        self.out_size = out_size
+        
+        self.w1 = Parameter(torch.fmod(torch.randn((self.z_dim, self.in_size*self.out_size*self.kernel_size*self.kernel_size)),2))
+        self.b1 = Parameter(torch.fmod(torch.randn((self.in_size*self.out_size*self.kernel_size*self.kernel_size)),2))
+        
+        self.w_bn1 = Parameter(torch.fmod(torch.randn((self.z_dim, self.out_size)),2))
+        self.b_bn1 = Parameter(torch.fmod(torch.randn((self.out_size)),2))
+
+        self.w_bn2 = Parameter(torch.fmod(torch.randn((self.z_dim, self.out_size)),2))
+        self.b_bn2 = Parameter(torch.fmod(torch.randn((self.out_size)),2))
+        
+    def forward(self, z):
+        h_final = torch.matmul(z, self.w1) + self.b1
+        kernel = h_final.view(self.out_size, self.in_size, self.kernel_size, self.kernel_size)
+        
+        bn_weight = torch.matmul(z, self.w_bn1) + self.b_bn1
+        bn_bias = torch.matmul(z, self.w_bn2) + self.b_bn2
+        
+        return kernel, bn_weight, bn_bias
 
 class HypernetConvBlock(nn.Module):
     def __init__(self, z_dim, kernel_size, in_size, out_size):

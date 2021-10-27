@@ -160,6 +160,7 @@ class Coeffnet(nn.Module):
         self.zs, self.base_num = self._get_z_bases(base_dir, device)
         
         self.coeffs = nn.Parameter(torch.randn(self.base_num))
+        # init coeffs
         if nn_init:
             if index is not None:
                 self.init_value = 0.0 #1.0/math.sqrt(self.base_num)
@@ -176,14 +177,14 @@ class Coeffnet(nn.Module):
         else:
             self.hypernet = Hypernet(z_dim, param_dict=deeplab_param)
         if hypernet_path is not None:
-            self._init_hypernet(hypernet_path)
+            self.init_hypernet(hypernet_path)
         
         self.use_backbone = use_backbone
         
         if use_backbone:
             self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
             if backbone_path is not None:
-                self._init_backbone(backbone_path)
+                self.init_backbone(backbone_path)
         
     def _get_z_bases(self, base_dir, device):
         if os.path.isdir(base_dir):
@@ -209,7 +210,7 @@ class Coeffnet(nn.Module):
             z += zs[i] * coeffs[i]
         return z
     
-    def _init_hypernet(self, hypernet_path):
+    def init_hypernet(self, hypernet_path):
         if hypernet_path is not None:
             print(hypernet_path)
             assert(os.path.isfile(hypernet_path) and hypernet_path.endswith(".pth"))
@@ -226,7 +227,7 @@ class Coeffnet(nn.Module):
         for param in self.hypernet.parameters():
             param.requires_grad = False
             
-    def _init_backbone(self, backbone_path, freeze = True):
+    def init_backbone(self, backbone_path, freeze = True):
         if backbone_path is not None:
             assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth"))
             state_dict = torch.load(backbone_path, map_location=self.device)

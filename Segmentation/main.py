@@ -35,22 +35,7 @@ def get_args():
     
     return parser.parse_args()
 
-if __name__ == '__main__':
-    # sample code
-    # pursuit(z_dim=100, 
-    #         data_dir="/orion/u/pancy/data/object-pursuit/ithor/Dataset/Train",
-    #         output_dir=f"./checkpoints_pursuit_allweights_0.8",
-    #         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-    #         initial_zs=f"{chuanyu_dir}/Bases_allweights/",
-    #         pretrained_bases=f"{chuanyu_dir}/Bases_allweights/",
-    #         pretrained_backbone=f"{chuanyu_dir}/checkpoints_conv_allweights/checkpoint.pth",
-    #         pretrained_hypernet=f"{chuanyu_dir}/checkpoints_conv_allweights/checkpoint.pth",
-    #         resize=(256, 256),
-    #         select_strat="sequence",
-    #         express_threshold=0.8,
-    #         use_backbone=False,
-    #         log_info="Data: sequence; threshold: 0.8")
-    
+if __name__ == '__main__':    
     args = get_args()
     pursuit(z_dim=args.z_dim, 
             data_dir=args.data_dir,
