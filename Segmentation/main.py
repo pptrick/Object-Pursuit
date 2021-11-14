@@ -28,9 +28,11 @@ def get_args():
                         help='resize of training image')
     parser.add_argument('-order', '--order', dest='order', type=str, default="sequence", choices=["sequence", "random"],
                         help='object order')
+    parser.add_argument('-dataset', '--dataset', dest='dataset', type=str, default="CO3D", choices=["iThor", "CO3D", "DAVIS"],
+                        help='select dataset')
     parser.add_argument('-thres', '--thres', dest='thres', type=float, default=0.6,
                         help='pursuit threshold (of whether an object can be expressed)')
-    parser.add_argument('-use_backbone', '--use_backbone', dest='use_backbone', type=bool, default=False,
+    parser.add_argument('-use_backbone', '--use_backbone', dest='use_backbone', action="store_true",
                         help='if true, the weights of the backbone will not be predicted by the hypernet')
     
     return parser.parse_args()
@@ -41,6 +43,7 @@ if __name__ == '__main__':
             data_dir=args.data_dir,
             output_dir=args.output_dir,
             device=default_device,
+            dataset=args.dataset,
             initial_zs=args.zs_dir,
             pretrained_bases=args.bases_dir,
             pretrained_backbone=args.pretrained_backbone,

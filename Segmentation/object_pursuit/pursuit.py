@@ -7,7 +7,7 @@ from tqdm import tqdm
 from model.coeffnet.hypernet import Hypernet
 from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
-from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector
+from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector, CO3DDataSelector
 from utils.GenBases import genBases
 from object_pursuit.train import train_net, have_seen
 from utils.util import *
@@ -92,7 +92,8 @@ def least_square(bases, target):
 def pursuit(z_dim, 
             data_dir, 
             output_dir, 
-            device, 
+            device,
+            dataset, 
             initial_zs = None,
             pretrained_bases=None,
             pretrained_backbone=None, 
@@ -128,29 +129,45 @@ def pursuit(z_dim,
         hypernet = Hypernet(z_dim, param_dict=deeplab_param_decoder)
     else:
         hypernet = Hypernet(z_dim, param_dict=deeplab_param)
-    if pretrained_hypernet is not None:
+        
+    if pretrained_hypernet is not None and os.path.isfile(pretrained_hypernet):
         init_hypernet(pretrained_hypernet, hypernet, device)
     hypernet.to(device)
     
     # build backbone
     if use_backbone:
         backbone = Backbone()
-        if pretrained_backbone is not None:
+        if pretrained_backbone is not None and os.path.isfile(pretrained_backbone):
             init_backbone(pretrained_backbone, backbone, device, freeze=True)
         backbone.to(device)
     else: # don't use backbone:
         backbone = None
     
     # data selector
-    dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1)
-    # dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
+    if dataset == "iThor":
+        dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1)
+        batch_size = 16
+        wait_epoch = 5
+        val_percent = 0.1
+    elif dataset == "CO3D":
+        dataSelector = CO3DDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1, limit_num=100)
+        batch_size = 8
+        wait_epoch = 6
+        val_percent = 1.0
+    elif dataset == "DAVIS":
+        dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
+        batch_size = 16
+        wait_epoch = 5
+        val_percent = 1.0
+    else:
+        raise NotImplementedError
     
     # initialize bases
     init_bases = get_z_bases(z_dim, base_dir, device)
     init_base_num = len(init_bases)
     
     # initialize current object list
-    if initial_zs is None:
+    if initial_zs is None or not os.path.isdir(initial_zs):
         initial_zs = base_dir
     init_objects = get_z_bases(z_dim, initial_zs, device)
     init_objects_num = len(init_objects)
@@ -212,7 +229,7 @@ def pursuit(z_dim,
         
         # ========================================================================================================
         # check if current object has been seen
-        seen, acc, z_file = have_seen(new_obj_dataset, device, z_dir, z_dim, hypernet, backbone, express_threshold, start_index=init_objects_num)
+        seen, acc, z_file = have_seen(new_obj_dataset, device, z_dir, z_dim, hypernet, backbone, express_threshold, start_index=init_objects_num, test_percent=val_percent)
         if seen:
             write_log(log_file, f"Current object has been seen! corresponding z file: {z_file}, express accuracy: {acc}")
             new_obj_dataset, obj_data_dir = dataSelector.next()
@@ -238,7 +255,10 @@ def pursuit(z_dim,
                       backbone=backbone,
                       save_cp_path=coeff_pursuit_dir,
                       z_dir=z_dir,
+                      batch_size=batch_size,
+                      val_percent=val_percent,
                       max_epochs=200,
+                      wait_epochs=wait_epoch,
                       lr=1e-4,
                       l1_loss_coeff=0.2)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
@@ -257,8 +277,10 @@ def pursuit(z_dim,
                       backbone=backbone,
                       save_cp_path=base_update_dir,
                       z_dir=z_dir,
+                      batch_size=batch_size,
+                      val_percent=val_percent,
                       max_epochs=200,
-                      wait_epochs=5,
+                      wait_epochs=wait_epoch,
                       lr=1e-4,
                       l1_loss_coeff=0.1,
                       mem_loss_coeff=0.04)
@@ -293,7 +315,9 @@ def pursuit(z_dim,
                         save_cp_path=check_express_dir,
                         z_dir=z_dir,
                         max_epochs=200,
-                        wait_epochs=5,
+                        batch_size=batch_size,
+                        val_percent=val_percent,
+                        wait_epochs=wait_epoch,
                         lr=1e-4,
                         acc_threshold=1.0,
                         l1_loss_coeff=0.2)

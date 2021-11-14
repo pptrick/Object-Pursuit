@@ -83,7 +83,7 @@ def train_net(z_dim,
               lr=0.0004, 
               val_percent=0.1,
               wait_epochs=3,
-              acc_threshold=0.90,
+              acc_threshold=0.95,
               l1_loss_coeff=0.2,
               mem_loss_coeff=0.04):
     # set logger
@@ -106,12 +106,20 @@ def train_net(z_dim,
         n_data = maximum_len
     else:
         n_data = len(dataset)
-    n_val = int(n_data * val_percent)
-    n_train = int(n_data * (1-val_percent))
-    n_rest = len(dataset) - n_val - n_train
-    train, val, _ = random_split(dataset, [n_train, n_val, n_rest])
-    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    
+    # set train/val dataset
+    if val_percent < 1.0:
+        n_val = int(n_data * val_percent)
+        n_train = int(n_data * (1-val_percent))
+        n_rest = len(dataset) - n_val - n_train
+        train, val, _ = random_split(dataset, [n_train, n_val, n_rest])
+        train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=False)
+        val_loader = DataLoader(val, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=False)
+    else:
+        n_train = n_data
+        n_val = n_data
+        train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=False)
+        val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=False)
     # n_train = len(dataset)
     # n_val = len(dataset)
     # train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
@@ -181,6 +189,8 @@ def train_net(z_dim,
                     loss.backward()
                     if net_type == "singlenet":
                         MemLoss(hypernet, mem_coeff)
+                        # pass
+                    
                     nn.utils.clip_grad_value_(optim_param, 0.1)
                     optimizer.step()
                     
@@ -233,7 +243,7 @@ def have_seen(dataset, device, z_dir, z_dim, hypernet, backbone, threshold, star
     n_test = int(len(dataset)*test_percent)
     n_rest = len(dataset) - n_test
     test_set, _ = random_split(dataset, [n_test, n_rest])
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=True)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True, drop_last=False)
     
     z_files = [os.path.join(z_dir, zf) for zf in sorted(os.listdir(z_dir)) if zf.endswith('.json')]
     max_acc = 0.0

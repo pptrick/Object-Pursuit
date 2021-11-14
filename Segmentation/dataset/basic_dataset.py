@@ -7,19 +7,18 @@ import torch
 import random
 from torch.utils.data import Dataset
 from PIL import Image
-
-from dataset.color_jitter import ColorJitter
 from torchvision import transforms
-import dataset.custom_transforms as tr 
 
+import dataset.custom_transforms as tr 
+# import custom_transforms as tr 
 
 class BasicDataset(Dataset):
-    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False, shuffle_seed=None):
+    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False, shuffle_seed=None, random_crop=False):
         self.imgs_dir = self._parse_dirs(imgs_dir)
         self.masks_dir = self._parse_dirs(masks_dir)
         self.resize = resize
         self.mask_suffix = mask_suffix
-        self.train = train
+        self.random_crop = random_crop
         
         self._get_ids()
         # logging.info(f'Creating dataset with {len(self.ids)} examples')
@@ -38,6 +37,17 @@ class BasicDataset(Dataset):
         else:
             return None
         
+    def _random_crop(self, img, mask):
+        length = min(img.size[0], img.size[1])
+        bias = random.randint(0, max(img.size[0], img.size[1])-length)
+        if img.size[0] > length:
+            img = img.crop([bias, 0, bias+length, length])
+            mask = mask.crop([bias, 0, bias+length, length])
+        else:
+            img = img.crop([0, bias, length, bias+length])
+            mask = mask.crop([0, bias, length, bias+length])
+        return img, mask
+        
     def _get_ids(self):
         self.ids = [] # each data specified with a file path
         for img_dir in self.imgs_dir:
@@ -47,7 +57,7 @@ class BasicDataset(Dataset):
                 root = os.path.dirname(img_dir)
             mask_dir = os.path.join(root, "masks")
             if mask_dir in self.masks_dir or (mask_dir+'/') in self.masks_dir:
-                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if not file.startswith('.')]
+                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if (not file.startswith('.')) and (file.endswith('.jpg') or file.endswith('.png'))]
                 img_dirs = [img_dir] * len(idx)
                 mask_dirs = [mask_dir] * len(idx)
                 self.ids += zip(idx, img_dirs, mask_dirs)
@@ -93,6 +103,9 @@ class BasicDataset(Dataset):
         _img = Image.open(img_file[0]).convert('RGB')
         _mask = Image.open(mask_file[0])
         
+        if self.random_crop:
+            _img, _mask = self._random_crop(_img, _mask)
+        
         if self.resize is not None:
             _img = _img.resize(self.resize)
             _mask = _mask.resize(self.resize)
@@ -106,26 +119,13 @@ class BasicDataset(Dataset):
         img, mask, img_file, mask_file = self._make_img_gt_point_pair(i)
         sample = {'image': img, 'mask': mask}
         
-        # print(f"img file: {img_file}")
-        
-        if self.train:
-            sample = self.transform_tr(sample)
-        else:
-            sample = self.transform_val(sample)
+        sample = self.transform_tr(sample)
             
         sample['img_file'] = img_file
         sample['mask_file'] = mask_file
         return sample
         
     def transform_tr(self, sample):
-        composed_transforms = transforms.Compose([
-            tr.MaskExpand(),
-            tr.ImgNorm(),
-            # tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            tr.ToTensor()])
-        return composed_transforms(sample)
-    
-    def transform_val(self, sample):
         composed_transforms = transforms.Compose([
             tr.MaskExpand(),
             tr.ImgNorm(),
@@ -144,5 +144,6 @@ class BasicDataset_nshot(BasicDataset):
 
         
 if __name__ == "__main__":
-    d = BasicDataset(["/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/imgs/", "/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/imgs/"], ["/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/masks/", "/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/masks/"])
+    # d = BasicDataset(["/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/imgs/", "/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/imgs/"], ["/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/masks/", "/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/masks/"])
+    d = BasicDataset("/orion/u/pancy/data/object-pursuit/CO3D/apple/353_37348_70263/images", "/orion/u/pancy/data/object-pursuit/CO3D/apple/353_37348_70263/masks", resize=(256, 256))
     print(d[3])
