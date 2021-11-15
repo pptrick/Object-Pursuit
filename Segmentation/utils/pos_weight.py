@@ -25,5 +25,8 @@ def get_pos_weight_from_batch(masks):
         sample = masks
         total_pixel = sample.size(0) * sample.size(1) * sample.size(2) * sample.size(3)
         nonzero_num = torch.nonzero(sample).size(0)
-        pos_weight = (total_pixel-nonzero_num)/nonzero_num
-    return pos_weight
+        if nonzero_num > 0:
+            pos_weight = (total_pixel-nonzero_num)/nonzero_num
+            return pos_weight
+        else:
+            return 1.0
