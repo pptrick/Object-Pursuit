@@ -50,6 +50,7 @@ class BasicDataset(Dataset):
         
     def _get_ids(self):
         self.ids = [] # each data specified with a file path
+        count = 0
         for img_dir in self.imgs_dir:
             if img_dir.endswith("/"):
                 root = os.path.dirname(os.path.dirname(img_dir))
@@ -61,8 +62,15 @@ class BasicDataset(Dataset):
                 img_dirs = [img_dir] * len(idx)
                 mask_dirs = [mask_dir] * len(idx)
                 self.ids += zip(idx, img_dirs, mask_dirs)
+            elif os.path.isdir(self.masks_dir[count]):
+                mask_dir = self.masks_dir[count]
+                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if (not file.startswith('.')) and (file.endswith('.jpg') or file.endswith('.png'))]
+                img_dirs = [img_dir] * len(idx)
+                mask_dirs = [mask_dir] * len(idx)
+                self.ids += zip(idx, img_dirs, mask_dirs)
             else:
                 print("[Warning] can't find mask dir: ", mask_dir)
+            count += 1
         
 
     def __len__(self):
@@ -103,15 +111,15 @@ class BasicDataset(Dataset):
         _img = Image.open(img_file[0]).convert('RGB')
         _mask = Image.open(mask_file[0])
         
+        assert _img.size == _mask.size, \
+            f'Image and mask {idx} should be the same size, but are {_img.size} and {_mask.size}'
+        
         if self.random_crop:
             _img, _mask = self._random_crop(_img, _mask)
         
         if self.resize is not None:
             _img = _img.resize(self.resize)
             _mask = _mask.resize(self.resize)
-        
-        assert _img.size == _mask.size, \
-            f'Image and mask {idx} should be the same size, but are {_img.size} and {_mask.size}'
 
         return _img, _mask, img_file[0], mask_file[0]
 
@@ -135,8 +143,8 @@ class BasicDataset(Dataset):
 
 
 class BasicDataset_nshot(BasicDataset):
-    def __init__(self, imgs_dir, masks_dir, n=1, resize=None, mask_suffix='', train=False, shuffle_seed=None):
-        super().__init__(imgs_dir, masks_dir, resize=resize, mask_suffix=mask_suffix, train=train, shuffle_seed=shuffle_seed)
+    def __init__(self, imgs_dir, masks_dir, n=1, resize=None, mask_suffix='', train=False, shuffle_seed=None, random_crop=False):
+        super().__init__(imgs_dir, masks_dir, resize=resize, mask_suffix=mask_suffix, train=train, shuffle_seed=shuffle_seed, random_crop=random_crop)
         self.n = n
         
     def _get_idx(self, index):

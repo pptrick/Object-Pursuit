@@ -189,7 +189,7 @@ class Coeffnet(nn.Module):
     def _get_z_bases(self, base_dir, device):
         if os.path.isdir(base_dir):
             base_files = [os.path.join(base_dir, file) for file in sorted(os.listdir(base_dir)) if file.endswith(".json")]
-            print("Base files: ", base_files)
+            print(f"Coeffnet: find {len(base_files)} Base files")
             zs = []
             for f in base_files:
                 z = torch.load(f, map_location=device)['z']

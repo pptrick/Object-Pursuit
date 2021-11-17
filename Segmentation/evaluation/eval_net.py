@@ -23,16 +23,16 @@ def eval_net(net, loader, device):
             with torch.no_grad():
                 mask_pred = net(imgs)
 
-            if net.n_classes > 1:
-                res = F.cross_entropy(mask_pred, true_masks).item()
-                tot += res
-            else:
-                pred = torch.sigmoid(mask_pred)
-                pred = (pred > 0.5).float()
-                res = dice_coeff(pred, true_masks).item()
-                # res = jaccard(true_masks, pred)
-                tot += res
-                records.append((res, img_file[0], mask_file[0]))
+                if net.n_classes > 1:
+                    res = F.cross_entropy(mask_pred, true_masks).item()
+                    tot += res
+                else:
+                    pred = torch.sigmoid(mask_pred)
+                    pred = (pred > 0.5).float()
+                    res = dice_coeff(pred, true_masks).item()
+                    # res = jaccard(true_masks, pred)
+                    tot += res
+                    records.append((res, img_file[0], mask_file[0]))
             pbar.update()
 
     net.train()
