@@ -7,7 +7,7 @@ from tqdm import tqdm
 from model.coeffnet.hypernet import Hypernet
 from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
-from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector, CO3DDataSelector
+from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector, CO3DDataSelector, VosDataSelector
 from utils.GenBases import genBases
 from object_pursuit.train import train_net, have_seen
 from utils.util import *
@@ -159,6 +159,11 @@ def pursuit(z_dim,
         batch_size = 16
         wait_epoch = 5
         val_percent = 1.0
+    elif dataset == "VOS":
+        dataSelector = VosDataSelector(data_dir, strat=select_strat, resize=resize, mode="instancewise")
+        batch_size = 16
+        wait_epoch = 3
+        val_percent = 0.1
     else:
         raise NotImplementedError
     

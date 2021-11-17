@@ -4,6 +4,7 @@ import random
 
 from dataset.basic_dataset import BasicDataset
 from dataset.davis_dataset import DavisDataset
+from dataset.vos_dataset import VosDataset
 
 class iThorDataSelector(object):    
     def __init__(self, data_dir, strat="sequence", resize=None, shuffle_seed=None, insert_seen=True, limit_num=None):
@@ -108,6 +109,57 @@ class DavisDataSelector(object):
         
     def _get_dataset(self, d):
         return DavisDataset(self.dataset_dir, d, self.resize)
+        
+    def next(self):
+        if self.strat == "sequence":
+            d, self.counter = self._sequence_next(self.counter)
+            if d is None:
+                return None, None
+            ds = self._get_dataset(d)
+            return ds, d if ds is not None else self.next()
+        elif self.strat == "random":
+            d, self.remain_set = self._random_next(self.remain_set)
+            if d is None:
+                return None, None
+            ds = self._get_dataset(d)
+            return ds, d if ds is not None else self.next()
+        else:
+            raise NotImplementedError
+        
+    def _sequence_next(self, counter):
+        if self.counter < len(self.objects):
+            return self.objects[self.counter], counter+1
+        else:
+            return None, counter
+        
+    def _random_next(self, remain_set):
+        if len(remain_set) > 0:
+            d = random.choice(remain_set)
+            remain_set.remove(d)
+            return d, remain_set
+        else:
+            return None, []
+
+class VosDataSelector(object):
+    def __init__(self, data_dir, strat="sequence", resize=None, mode='instancewise'):
+        # self.objects, _, _, _ = DavisDataset.get_obj_list(data_dir)
+        self.objects = ['leopard', 'elephant', 'toilet', 'shark', 'surfboard', 'cat',
+                        'frisbee', 'mouse', 'tennis_racket', 'eagle', 'umbrella', 'bucket', 'knife',
+                        'parrot', 'tiger', 'hedgehog', 'giraffe', 'train', 'camel', 'bus', 'bird', 'hat',
+                        'deer', 'horse', 'plant', 'owl', 'sedan', 'lizard', 'bike', 'cow', 'parachute',
+                        'sheep', 'paddle', 'dog', 'dolphin', 'ape', 'lion', 'squirrel', 'skateboard',
+                        'snake', 'bear', 'person', 'frog', 'rabbit', 'snowboard', 'monkey', 'boat',
+                        'crocodile', 'truck', 'raccoon', 'penguin', 'fox', 'turtle', 'duck', 'giant_panda',
+                        'snail', 'hand', 'sign', 'earless_seal', 'airplane', 'motorbike', 'fish', 'zebra', 'whale', 'others']
+        self.dataset_dir = data_dir
+        self.strat = strat
+        self.resize = resize
+        self.counter = 0
+        self.remain_set = copy.deepcopy(self.objects)
+        self.mode = mode
+        
+    def _get_dataset(self, d):
+        return VosDataset(self.dataset_dir, d, self.resize, self.mode)
         
     def next(self):
         if self.strat == "sequence":

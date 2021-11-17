@@ -24,11 +24,11 @@ def get_args():
                         help='pretrained backbone path')
     parser.add_argument('-hypernet', '--hypernet', dest='pretrained_hypernet', type=str, nargs='?', default="./checkpoints/checkpoint.pth",
                         help='pretrained hypernet path')
-    parser.add_argument('-resize', '--resize', dest='resize', type=tuple, nargs='?', default=(256, 256),
+    parser.add_argument('-resize', '--resize', dest='resize', type=tuple, nargs=2, default=(256, 256),
                         help='resize of training image')
     parser.add_argument('-order', '--order', dest='order', type=str, default="sequence", choices=["sequence", "random"],
                         help='object order')
-    parser.add_argument('-dataset', '--dataset', dest='dataset', type=str, default="CO3D", choices=["iThor", "CO3D", "DAVIS"],
+    parser.add_argument('-dataset', '--dataset', dest='dataset', type=str, default="CO3D", choices=["iThor", "CO3D", "DAVIS", "VOS"],
                         help='select dataset')
     parser.add_argument('-thres', '--thres', dest='thres', type=float, default=0.6,
                         help='pursuit threshold (of whether an object can be expressed)')
@@ -48,7 +48,7 @@ if __name__ == '__main__':
             pretrained_bases=args.bases_dir,
             pretrained_backbone=args.pretrained_backbone,
             pretrained_hypernet=args.pretrained_hypernet,
-            resize=args.resize,
+            resize=[int(''.join(x)) for x in args.resize],
             select_strat=args.order,
             express_threshold=args.thres,
             use_backbone=args.use_backbone,
