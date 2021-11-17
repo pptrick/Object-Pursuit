@@ -55,6 +55,8 @@ def nshot_get_args():
                         help='if true, save checkpoints')
     parser.add_argument('-save_viz', '--save_viz', dest='save_viz', action="store_true",
                         help='if true, save visualization prediction')
+    parser.add_argument('-use_backbone', '--use_backbone', dest='use_backbone', action="store_true",
+                        help='if true, the weights of the backbone will not be predicted by the hypernet')
     
     return parser.parse_args()
 
@@ -66,7 +68,8 @@ def main(args):
                        z_dim=args.z_dim,
                        base_dir=args.bases_dir,
                        pretrained_hypernet=args.pretrained_hypernet,
-                       pretrained_backbone=args.pretrained_backbone)
+                       pretrained_backbone=args.pretrained_backbone,
+                       use_backbone=args.use_backbone)
     
     train_dataset, test_dataset = select_dataset(dataset=args.dataset,
                                                  img_dir=args.img_dir,
