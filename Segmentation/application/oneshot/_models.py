@@ -15,7 +15,7 @@ def select_model(model,
     elif model == "deeplab":
         net = DeepLab(num_classes = 1, backbone = 'resnetsub', output_stride = 16, freeze_backbone=False, pretrained_backbone=True)
         net.init_backbone(pretrained_backbone, freeze=True)
-    elif model == "singlenet": # directly find a 100-dim z instead of the combination of bases
+    elif model == "singlenet": # directly pursuit a 100-dim z instead of the combination of bases
         net = Singlenet(z_dim=z_dim, device=device, use_backbone=use_backbone)
         net.init_hypernet(pretrained_hypernet, freeze=True)
         net.init_backbone(pretrained_backbone, freeze=True)

@@ -3,8 +3,9 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from loss.dice_loss import dice_coeff
+from loss.criterion import jaccard
 
-def eval_net(net, loader, device):
+def eval_net(net, loader, device, use_IOU=False):
     """Evaluation without the densecrf with the dice coefficient"""
     net.train()
     # net.eval()
@@ -29,8 +30,10 @@ def eval_net(net, loader, device):
                 else:
                     pred = torch.sigmoid(mask_pred)
                     pred = (pred > 0.5).float()
-                    res = dice_coeff(pred, true_masks).item()
-                    # res = jaccard(true_masks, pred)
+                    if use_IOU:
+                        res = jaccard(true_masks, pred)
+                    else:
+                        res = dice_coeff(pred, true_masks).item()
                     tot += res
                     records.append((res, img_file[0], mask_file[0]))
             pbar.update()
