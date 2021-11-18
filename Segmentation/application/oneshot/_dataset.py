@@ -28,6 +28,7 @@ def select_dataset(dataset,
     return train_dataset, test_dataset
 
 def split_testset(test_dataset, n_test=None, split_seed=0):
+    # split out a sub-dataset from original testset, do it when original testset is large
     if type(n_test) == int and n_test < len(test_dataset) and n_test > 0:
         new_test_dataset, _ = random_split(test_dataset, [n_test, len(test_dataset) - n_test], generator=torch.Generator().manual_seed(split_seed))
         return new_test_dataset

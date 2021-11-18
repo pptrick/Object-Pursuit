@@ -18,15 +18,15 @@ from utils.util import create_dir, write_log
 
 def train_nshot(net,
                 device,
-                train_dataset,
+                train_dataset, # torch dataset
                 eval_dataset,
                 epochs=10,
                 batch_size=8,
                 lr=4e-4,
                 ckpt_path="./checkpoint_nshot/",
-                eval_step=10,
-                save_ckpt=False,
-                save_viz=False,
+                eval_step=10, # evaluate every 'eval_step' steps
+                save_ckpt=False, # save checkpoint (model param)
+                save_viz=False, # save visualization results
                 args=None):
     # dataset
     n_train = len(train_dataset)
@@ -105,7 +105,7 @@ def train_nshot(net,
                 
                 # eval
                 if global_step % int(eval_step * int(n_train / (batch_size))) == 0:
-                    val_score, _ = eval_net(net, val_loader, device)
+                    val_score, _ = eval_net(net, val_loader, device, use_IOU=True)
                     val_acc_list.append(val_score)
                     write_log(logf, f'Validation Dice Coeff: {val_score}, current loss: {sum(loss_list)/len(loss_list)}')
                     loss_list = []
