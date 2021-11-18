@@ -27,7 +27,7 @@ def nshot_get_args():
                         help='pretrained hypernet path')
     
     # select
-    parser.add_argument('-resize', '--resize', dest='resize', type=tuple, nargs='?', default=(256, 256),
+    parser.add_argument('-resize', '--resize', dest='resize', type=tuple, nargs='?', default=(320, 180),
                         help='resize of training image')
     parser.add_argument('-model', '--model', dest='model', type=str, default="coeffnet", choices=["unet", "deeplab", "singlenet", "coeffnet"],
                         help='select model')

@@ -107,8 +107,9 @@ class VosDataset(Dataset):
             img = ImageOps.mirror(img)
             mask = ImageOps.mirror(mask)
         # random crop
-        crop_rate = 0.75
-        delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
+        crop_rate = 0.6
+        delta_W, delta_H = random.randint(int(crop_rate*img_size[0]), img_size[0]), random.randint(int(crop_rate*img_size[1]), img_size[1])
+        # delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])
         delta_x, delta_y = random.randint(0, img_size[0] - delta_W), random.randint(0, img_size[1] - delta_H)
         # crop_rate = 0.3
         # delta_W, delta_H = int(crop_rate*img_size[0]), int(crop_rate*img_size[1])

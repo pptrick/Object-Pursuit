@@ -12,4 +12,38 @@ python main.py \
 --use_backbone \
 --resize 320 180
 
-sbatch --partition=orion --qos=normal --nodes=1 --cpus-per-task=8 --mem=40G --job-name=vos0.55 --output=vos0.55.out run_vos.sh 0.55
+sbatch --partition=orion --gres=gpu:titanxp:1 --qos=normal --nodes=1 --cpus-per-task=8 --mem=40G --job-name=vos0.7_0.6cropnew --output=vos0.7_0.6cropnew.out run_vos.sh 0.7
+
+
+
+
+#!/bin/bash
+#SBATCH --partition=orion --qos=normal
+#SBATCH --time=07-00:00:00
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=20G
+# only use the following on partition with GPUs
+#SBATCH --gres=gpu:titanxp:1
+#SBATCH --job-name="nshot"
+#SBATCH --output=nshot.out
+
+python one-shot.py \
+--model coeffnet \
+--dataset DAVIS \
+--n 1 \
+--z_dim 100 \
+--eval_step 5 \
+--epochs 30 \
+--imgs /orion/u/pancy/data/object-pursuit/davis/DAVIS/JPEGImages/480p/bear \
+--masks /orion/u/pancy/data/object-pursuit/davis/DAVIS/Annotations/480p/bear \
+--out ./checkpoints_nshot_debug_vos_crop0.6_0.7 \
+--bases /orion/u/yzcong/Object-Pursuit/Segmentation/checkpoints_pursuit_VOS_new_500crop0.6_0.7/Bases/ \
+--backbone /orion/u/yzcong/Object-Pursuit/Segmentation/checkpoints_pursuit_VOS_new_500crop0.6_0.7/checkpoint/backbone.pth \
+--hypernet /orion/u/yzcong/Object-Pursuit/Segmentation/checkpoints_pursuit_VOS_new_500crop0.6_0.7/checkpoint/hypernet.pth \
+--use_backbone \
+--save_viz
+
+
+sbatch --partition=orion --qos=normal --gres=gpu:titanxp:1 --nodes=1 --cpus-per-task=8 \
+--mem=40G --job-name=vos1shot_crop0.6_0.6 --output=vos1shot_crop0.6_0.6.out run_vos_nshot.sh 3421275 checkpoints_pursuit_VOS_new_500crop0.6_0.6
