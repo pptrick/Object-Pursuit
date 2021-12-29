@@ -98,8 +98,7 @@ class CO3DDataSelector(iThorDataSelector):
         
 class DavisDataSelector(object):
     def __init__(self, data_dir, strat="sequence", resize=None):
-        # self.objects, _, _, _ = DavisDataset.get_obj_list(data_dir)
-        self.objects = ['rhino', 'bear', 'dog', 'blackswan', 'cows', 'bus']
+        self.objects, _, _, _ = DavisDataset.get_obj_list(data_dir)
         self.dataset_dir = data_dir
         self.strat = strat
         self.resize = resize

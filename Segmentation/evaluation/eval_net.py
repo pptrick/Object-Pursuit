@@ -39,5 +39,5 @@ def eval_net(net, loader, device, use_IOU=False):
             pbar.update()
 
     net.train()
-    
-    return tot / n_val, records
+    decay = records[-1][0] - records[0][0]
+    return tot / n_val, (decay, records)

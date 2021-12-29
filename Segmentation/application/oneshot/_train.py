@@ -27,6 +27,7 @@ def train_nshot(net,
                 eval_step=10, # evaluate every 'eval_step' steps
                 save_ckpt=False, # save checkpoint (model param)
                 save_viz=False, # save visualization results
+                use_dice=False,
                 args=None):
     # dataset
     n_train = len(train_dataset)
@@ -48,6 +49,7 @@ def train_nshot(net,
         Eval step:       {eval_step}
         save checkpoint: {save_ckpt}
         save visualize:  {save_viz}
+        use dice loss:   {use_dice}
         parameter number of the network: {sum(x.numel() for x in net.parameters() if x.requires_grad)}
     \n'''
     write_log(logf, info_text)
@@ -105,9 +107,9 @@ def train_nshot(net,
                 
                 # eval
                 if global_step % int(eval_step * int(n_train / (batch_size))) == 0:
-                    val_score, _ = eval_net(net, val_loader, device, use_IOU=True)
+                    val_score, d = eval_net(net, val_loader, device, use_IOU=(not use_dice))
                     val_acc_list.append(val_score)
-                    write_log(logf, f'Validation Dice Coeff: {val_score}, current loss: {sum(loss_list)/len(loss_list)}')
+                    write_log(logf, f'Validation Dice Coeff: {val_score}, decay: {d[0]}, current loss: {sum(loss_list)/len(loss_list)}')
                     loss_list = []
                     
         # An epoch finished & save ckpt

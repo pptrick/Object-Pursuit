@@ -15,11 +15,17 @@ def select_dataset(dataset,
                    split_seed=0):
     if dataset == "iThor":
         test_dataset = BasicDataset(img_dir, mask_dir, resize=resize)
-        train_dataset = BasicDataset_nshot(img_dir, mask_dir, n=n, resize=resize, shuffle_seed=shuffle_seed)
+        if n>0:
+            train_dataset = BasicDataset_nshot(img_dir, mask_dir, n=n, resize=resize, shuffle_seed=shuffle_seed)
+        else:
+            train_dataset = BasicDataset(img_dir, mask_dir, resize=resize)
     elif dataset == "DAVIS":
         # here I crop DAVIS' 854*480 image to a square then resize
         test_dataset = BasicDataset(img_dir, mask_dir, resize=resize, random_crop=True)
-        train_dataset = BasicDataset_nshot(img_dir, mask_dir, n=n, resize=resize, random_crop=True)
+        if n>0:
+            train_dataset = BasicDataset_nshot(img_dir, mask_dir, n=n, resize=resize, random_crop=True)
+        else:
+            train_dataset = BasicDataset(img_dir, mask_dir, resize=resize, random_crop=True)
     elif dataset == "KITTI":
         pass
     else:

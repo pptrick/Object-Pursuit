@@ -1,3 +1,4 @@
+import os
 import torch
 import argparse
 
@@ -19,11 +20,11 @@ def nshot_get_args():
     parser.add_argument('-masks', '--masks', dest='mask_dir', type=str, nargs='?', help='directory of input masks')
     
     # pretrain
-    parser.add_argument('-bases', '--bases', dest='bases_dir', type=str, nargs='?', default="./Bases",
+    parser.add_argument('-bases', '--bases', dest='bases_dir', type=str, nargs='?', default=None,
                         help='directory of bases (base list)')
-    parser.add_argument('-backbone', '--backbone', dest='pretrained_backbone', type=str, nargs='?', default="./checkpoints/checkpoint.pth",
+    parser.add_argument('-backbone', '--backbone', dest='pretrained_backbone', type=str, nargs='?', default=None,
                         help='pretrained backbone path')
-    parser.add_argument('-hypernet', '--hypernet', dest='pretrained_hypernet', type=str, nargs='?', default="./checkpoints/checkpoint.pth",
+    parser.add_argument('-hypernet', '--hypernet', dest='pretrained_hypernet', type=str, nargs='?', default=None,
                         help='pretrained hypernet path')
     
     # select
@@ -57,11 +58,17 @@ def nshot_get_args():
                         help='if true, save visualization prediction')
     parser.add_argument('-use_backbone', '--use_backbone', dest='use_backbone', action="store_true",
                         help='if true, the weights of the backbone will not be predicted by the hypernet')
+    parser.add_argument('-use_dice_loss', '--use_dice_loss', dest='use_dice_loss', action="store_true",
+                        help='if true, the accuracy will be reported in dice loss')
     
     return parser.parse_args()
 
 def main(args):
     default_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # add output dir
+    if not os.path.isdir(args.output_dir):
+        os.makedirs(args.output_dir)
     
     net = select_model(model=args.model,
                        device=default_device,
@@ -90,4 +97,5 @@ def main(args):
                 eval_step=args.eval_step,
                 save_ckpt=args.save_ckpt,
                 save_viz=args.save_viz,
+                use_dice=args.use_dice_loss,
                 args=args)
