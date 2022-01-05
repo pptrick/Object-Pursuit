@@ -151,8 +151,7 @@ class VosDataSelector(object):
                         'snake', 'bear', 'person', 'frog', 'rabbit', 'snowboard', 'monkey', 'boat',
                         'crocodile', 'truck', 'raccoon', 'penguin', 'fox', 'turtle', 'duck', 'giant_panda',
                         'snail', 'hand', 'sign', 'earless_seal', 'airplane', 'motorbike', 'fish', 'zebra', 'whale', 'others']
-        self.objects = self.objects * 2
-        print(self.objects)
+
         self.dataset_dir = data_dir
         self.strat = strat
         self.resize = resize
