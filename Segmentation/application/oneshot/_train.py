@@ -120,7 +120,7 @@ def train_nshot(net,
                     torch.save(net.state_dict(), save_path)
                     write_log(logf, f'save checkpoint to {save_path}')
                 if save_viz:
-                    save_path = os.path.join(ckpt_path, 'viz_pred')
+                    save_path = os.path.join(ckpt_path, 'viz_pred_1train_256_256_dataset2')
                     vis_predict(save_path, net, val_loader, device)
                     write_log(logf, f'save visualization predict result to {save_path}')
                 max_val_acc = avg_val_acc

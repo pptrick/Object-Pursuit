@@ -18,6 +18,18 @@ def mask_on_img(img, mask, alpha=1.0):
     res[:, :, 0] = mask[:,:]*alpha*255 + (1-mask[:,:]*alpha)*res[:,:,0]
     return res
 
+def mask_black(img, mask, alpha=1.0):
+    """overlap mask on img
+
+    Args:
+        img (PIL Image): input target rgb image, H*W*C
+        mask (bool array): predict mask of img, H*W
+        alpha (float, optional): transparent value of the mask. Defaults to 0.9.
+    """
+    res = np.zeros(img.size)
+    res[:, :] = mask[:,:] * 255
+    return res
+
 def vis_predict(output_dir, net, loader, device, out_threshold=0.5):
     net.eval()
     if not os.path.exists(output_dir):
@@ -46,6 +58,7 @@ def vis_predict(output_dir, net, loader, device, out_threshold=0.5):
                 res = mask_on_img(img, full_mask)
                 res_img = Image.fromarray(res)
                 res_img.save(os.path.join(output_dir, os.path.basename(img_files[i])))
+                Image.fromarray(mask_black(img, full_mask)).convert('RGB').save(os.path.join(output_dir, 'mask_' + os.path.basename(img_files[i])))
                 counter += 1
                       
             pbar.update()

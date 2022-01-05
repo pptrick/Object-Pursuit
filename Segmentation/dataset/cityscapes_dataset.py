@@ -12,13 +12,15 @@ from torchvision import transforms
 import dataset.custom_transforms as tr 
 # import custom_transforms as tr 
 
-class BasicDataset(Dataset):
-    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False, shuffle_seed=None, random_crop=False):
+class CityscapesDataset(Dataset):
+    def __init__(self, imgs_dir, masks_dir, resize = None, mask_suffix='', train=False, shuffle_seed=None, random_crop=False, nshot=False):
         self.imgs_dir = self._parse_dirs(imgs_dir)
         self.masks_dir = self._parse_dirs(masks_dir)
         self.resize = resize
         self.mask_suffix = mask_suffix
         self.random_crop = random_crop
+
+        self.nshot = nshot
         
         self._get_ids()
         # logging.info(f'Creating dataset with {len(self.ids)} examples')
@@ -77,13 +79,13 @@ class BasicDataset(Dataset):
                 root = os.path.dirname(img_dir)
             mask_dir = os.path.join(root, "masks")
             if mask_dir in self.masks_dir or (mask_dir+'/') in self.masks_dir:
-                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if (not file.startswith('.')) and (file.endswith('.jpg') or file.endswith('.png'))]
+                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if ((not self.nshot or 'nshot' not in file) and not file.startswith('.')) and (file.endswith('.jpg') or file.endswith('.png'))]
                 img_dirs = [img_dir] * len(idx)
                 mask_dirs = [mask_dir] * len(idx)
                 self.ids += zip(idx, img_dirs, mask_dirs)
             elif os.path.isdir(self.masks_dir[count]):
                 mask_dir = self.masks_dir[count]
-                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if (not file.startswith('.')) and (file.endswith('.jpg') or file.endswith('.png'))]
+                idx = [splitext(file)[0] for file in sorted(listdir(img_dir)) if ((not self.nshot or 'nshot' not in file) and not file.startswith('.')) and (file.endswith('.jpg') or file.endswith('.png'))]
                 img_dirs = [img_dir] * len(idx)
                 mask_dirs = [mask_dir] * len(idx)
                 self.ids += zip(idx, img_dirs, mask_dirs)
@@ -93,7 +95,7 @@ class BasicDataset(Dataset):
         
 
     def __len__(self):
-        return len(self.ids)
+        return len(self.ids) * 4
 
     @classmethod
     def preprocess(cls, pil_img, scale):
@@ -115,7 +117,7 @@ class BasicDataset(Dataset):
         return img_trans
     
     def _get_idx(self, index):
-        return self.ids[index]
+        return self.ids[index % len(self.ids)]
     
     def _make_img_gt_point_pair(self, index):
         idx = self._get_idx(index)
@@ -161,16 +163,20 @@ class BasicDataset(Dataset):
         return composed_transforms(sample)
 
 
-class BasicDataset_nshot(BasicDataset):
-    def __init__(self, imgs_dir, masks_dir, n=1, resize=None, mask_suffix='', train=False, shuffle_seed=None, random_crop=False):
-        super().__init__(imgs_dir, masks_dir, resize=resize, mask_suffix=mask_suffix, train=train, shuffle_seed=shuffle_seed, random_crop=random_crop)
+class CityscapesDataset_nshot(CityscapesDataset):
+    def __init__(self, imgs_dir, masks_dir, n=1, resize=None, mask_suffix='', train=False, shuffle_seed=None, random_crop=False, nshot=False):
+        super().__init__(imgs_dir, masks_dir, resize=resize, mask_suffix=mask_suffix, train=train, shuffle_seed=shuffle_seed, random_crop=random_crop, nshot=nshot)
         self.n = n
+        print(self.ids)
         
     def _get_idx(self, index):
         return self.ids[index % self.n]
+    
+    def __len__(self):
+        return 200
 
         
 if __name__ == "__main__":
     # d = BasicDataset(["/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/imgs/", "/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/imgs/"], ["/data/pancy/iThor/single_obj/data_FloorPlan3_Egg/masks/", "/data/pancy/iThor/single_obj/data_FloorPlan4_Egg/masks/"])
-    d = BasicDataset("/orion/u/pancy/data/object-pursuit/CO3D/apple/353_37348_70263/images", "/orion/u/pancy/data/object-pursuit/CO3D/apple/353_37348_70263/masks", resize=(256, 256))
+    d = CityscapesDataset("/orion/u/pancy/data/object-pursuit/CO3D/apple/353_37348_70263/images", "/orion/u/pancy/data/object-pursuit/CO3D/apple/353_37348_70263/masks", resize=(256, 256))
     print(d[3])

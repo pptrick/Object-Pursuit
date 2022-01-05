@@ -49,14 +49,14 @@ class MaskExpand(object):
         mask = np.array(mask).astype(np.float32)
         #expand
         if len(mask.shape) == 3:
-            print("warning, find a 3-dim mask")
+            # print("warning, find a 3-dim mask")
             mask = mask[:,:,0]
         if len(mask.shape) == 2:
             mask = np.expand_dims(mask, axis=2)
         mask = mask.transpose((2,0,1))
         if mask.max() > 1:
             mask = mask/255
-        
+                
         return {'image': img,
                 'mask': mask}
         
