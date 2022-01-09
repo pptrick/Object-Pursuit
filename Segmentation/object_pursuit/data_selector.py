@@ -96,44 +96,29 @@ class CO3DDataSelector(iThorDataSelector):
             print("[DataSelector Warning] found error dir: ", dir_imgs)
             return None
         
-class DavisDataSelector(object):
-    def __init__(self, data_dir, strat="sequence", resize=None):
-        self.objects, _, _, _ = DavisDataset.get_obj_list(data_dir)
-        self.dataset_dir = data_dir
-        self.strat = strat
-        self.resize = resize
-        self.counter = 0
-        self.remain_set = copy.deepcopy(self.objects)
+class DavisDataSelector(iThorDataSelector):
+    def __init__(self, data_dir, strat="sequence", resize=None, shuffle_seed=None, insert_seen=True, limit_num=None):
+        super().__init__(data_dir, strat=strat, resize=resize, shuffle_seed=shuffle_seed, insert_seen=insert_seen, limit_num=limit_num)
         
+    def _get_obj_paths(self, shuffle_seed=None, insert_seen=True, limit_num=None):
+        self.ImgPath = "JPEGImages"
+        self.MaskPath = "Annotations"
+        self.ResolutionPath = "480p"
+        objPath = os.path.join(self.data_dir, self.ImgPath, self.ResolutionPath)
+        objList = [obj for obj in sorted(os.listdir(objPath))]
+        objList = self._shuffle(objList, shuffle_seed)
+        if insert_seen:
+            objList = self._insert_seen_object(objList)
+        if type(limit_num) == int and limit_num > 0:
+            objList = objList[0:limit_num]
+        print("[Davis Data Selector] object list: ", objList)
+        return objList
+
     def _get_dataset(self, d):
-        return DavisDataset(self.dataset_dir, d, self.resize)
-        
-    def next(self):
-        if self.strat == "sequence":
-            d, self.counter = self._sequence_next(self.counter)
-            if d is None:
-                return None, None
-            ds = self._get_dataset(d)
-            return ds, d if ds is not None else self.next()
-        elif self.strat == "random":
-            d, self.remain_set = self._random_next(self.remain_set)
-            if d is None:
-                return None, None
-            ds = self._get_dataset(d)
-            return ds, d if ds is not None else self.next()
+        dir_imgs = os.path.join(self.data_dir, self.ImgPath, self.ResolutionPath, d)
+        dir_masks = os.path.join(self.data_dir, self.MaskPath, self.ResolutionPath, d)
+        if os.path.isdir(dir_imgs) and os.path.isdir(dir_masks):
+            return BasicDataset(dir_imgs, dir_masks, resize=self.resize, random_crop=True)
         else:
-            raise NotImplementedError
-        
-    def _sequence_next(self, counter):
-        if self.counter < len(self.objects):
-            return self.objects[self.counter], counter+1
-        else:
-            return None, counter
-        
-    def _random_next(self, remain_set):
-        if len(remain_set) > 0:
-            d = random.choice(remain_set)
-            remain_set.remove(d)
-            return d, remain_set
-        else:
-            return None, []
+            print("[DataSelector Warning] found error dir: ", dir_imgs)
+            return None

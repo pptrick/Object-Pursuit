@@ -83,7 +83,7 @@ def train_net(z_dim,
               lr=0.0004, 
               val_percent=0.1,
               wait_epochs=3,
-              acc_threshold=0.95,
+              acc_threshold=1.0,
               l1_loss_coeff=0.2,
               mem_loss_coeff=0.04):
     # set logger
@@ -194,7 +194,7 @@ def train_net(z_dim,
                     global_step += 1
                     
                     # eval
-                    if global_step % int(n_train / (2*batch_size)) == 0:
+                    if global_step % int(n_train / (batch_size)) == 0:
                         val_score = eval_net(net_type, primary_net, val_loader, device, hypernet, backbone, zs)
                         val_list.append(val_score)
                         write_log(log_file, f'  Validation Dice Coeff: {val_score}, segmentation loss + l1 loss: {loss}')

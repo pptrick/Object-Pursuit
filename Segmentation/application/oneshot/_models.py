@@ -18,7 +18,8 @@ def select_model(model,
     elif model == "singlenet": # directly pursuit a 100-dim z instead of the combination of bases
         net = Singlenet(z_dim=z_dim, device=device, use_backbone=use_backbone)
         net.init_hypernet(pretrained_hypernet, freeze=True)
-        net.init_backbone(pretrained_backbone, freeze=True)
+        if use_backbone:
+            net.init_backbone(pretrained_backbone, freeze=True)
     elif model == "coeffnet": # combine bases and pursuit coeffs
         assert base_dir is not None
         net = Coeffnet(base_dir=base_dir, 

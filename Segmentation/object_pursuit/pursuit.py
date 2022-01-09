@@ -143,22 +143,26 @@ def pursuit(z_dim,
     else: # don't use backbone:
         backbone = None
     
+    # general settings
+    batch_size = 16
+    express_wait_epoch = 5
+    new_base_wait_epoch = 5
+    express_max_epoch = 200
+    new_base_max_epoch = 200
+    val_percent = 1.0 # test all data
     # data selector
     if dataset == "iThor":
         dataSelector = iThorDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1)
-        batch_size = 16
-        wait_epoch = 5
         val_percent = 0.1
     elif dataset == "CO3D":
-        dataSelector = CO3DDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1, limit_num=100)
+        dataSelector = CO3DDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1, limit_num=300)
         batch_size = 8
-        wait_epoch = 6
-        val_percent = 1.0
+        new_base_wait_epoch = 30
+        new_base_max_epoch = 140 
     elif dataset == "DAVIS":
-        dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize)
-        batch_size = 16
-        wait_epoch = 5
-        val_percent = 1.0
+        dataSelector = DavisDataSelector(data_dir, strat=select_strat, resize=resize, shuffle_seed=1)
+        new_base_wait_epoch = 30
+        new_base_max_epoch = 140 
     else:
         raise NotImplementedError
     
@@ -257,8 +261,8 @@ def pursuit(z_dim,
                       z_dir=z_dir,
                       batch_size=batch_size,
                       val_percent=val_percent,
-                      max_epochs=200,
-                      wait_epochs=wait_epoch,
+                      max_epochs=express_max_epoch,
+                      wait_epochs=express_wait_epoch,
                       lr=1e-4,
                       l1_loss_coeff=0.2)
             write_log(log_file, f"training stop, max validation acc: {max_val_acc}")
@@ -279,8 +283,8 @@ def pursuit(z_dim,
                       z_dir=z_dir,
                       batch_size=batch_size,
                       val_percent=val_percent,
-                      max_epochs=200,
-                      wait_epochs=wait_epoch,
+                      max_epochs=new_base_max_epoch,
+                      wait_epochs=new_base_wait_epoch,
                       lr=1e-4,
                       l1_loss_coeff=0.1,
                       mem_loss_coeff=0.04)
@@ -314,10 +318,10 @@ def pursuit(z_dim,
                         backbone=backbone,
                         save_cp_path=check_express_dir,
                         z_dir=z_dir,
-                        max_epochs=200,
+                        max_epochs=express_max_epoch,
                         batch_size=batch_size,
                         val_percent=val_percent,
-                        wait_epochs=wait_epoch,
+                        wait_epochs=new_base_wait_epoch,
                         lr=1e-4,
                         acc_threshold=1.0,
                         l1_loss_coeff=0.2)
