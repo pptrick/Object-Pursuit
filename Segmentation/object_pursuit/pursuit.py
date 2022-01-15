@@ -102,7 +102,8 @@ def pursuit(z_dim,
             resize=None,
             express_threshold=0.7,
             log_info="default",
-            use_backbone=True):
+            use_backbone=True,
+            save_temp_interval=0):
     # prepare for new pursuit dir
     create_dir(output_dir)
     base_dir = os.path.join(output_dir, "Bases")
@@ -114,7 +115,9 @@ def pursuit(z_dim,
     create_dir(checkpoint_dir)
     log_file = open(os.path.join(output_dir, "pursuit_log.txt"), "w")
     write_log(log_file, "[Exp Info] "+log_info)
+    
     z_info = []
+    base_info = []
     
     # prepare bases
     if pretrained_bases is not None and os.path.isfile(pretrained_bases):
@@ -194,6 +197,7 @@ def pursuit(z_dim,
         initial (first) object index:     {obj_counter}
         express accuracy threshold:       {express_threshold}
         use backbone:                     {use_backbone}
+        save object interval:             {save_temp_interval} (0 means don't save)
     '''
     write_log(log_file, pursuit_info)
     if backbone is None:
@@ -208,13 +212,15 @@ def pursuit(z_dim,
         
         # record checkpoints per 8 round
         counter += 1
-        if counter % 8 == 0:
-            temp_checkpoint_dir = os.path.join(checkpoint_dir, f"checkpoint_round_{counter}")
-            create_dir(temp_checkpoint_dir)
-            torch.save(hypernet.state_dict(), os.path.join(temp_checkpoint_dir, f'hypernet.pth'))
-            copy_zs(z_dir, os.path.join(temp_checkpoint_dir, "zs"))
-            copy_zs(base_dir, os.path.join(temp_checkpoint_dir, "Bases"))
-            write_log(log_file, f"[checkpoint] pursuit round {counter} has been saved to {temp_checkpoint_dir}")
+        
+        if save_temp_interval > 0:
+            if counter % save_temp_interval == 0:
+                temp_checkpoint_dir = os.path.join(checkpoint_dir, f"checkpoint_round_{counter}")
+                create_dir(temp_checkpoint_dir)
+                torch.save(hypernet.state_dict(), os.path.join(temp_checkpoint_dir, f'hypernet.pth'))
+                copy_zs(z_dir, os.path.join(temp_checkpoint_dir, "zs"))
+                copy_zs(base_dir, os.path.join(temp_checkpoint_dir, "Bases"))
+                write_log(log_file, f"[checkpoint] pursuit round {counter} has been saved to {temp_checkpoint_dir}")
         
         # for each new object, create a new dir
         obj_dir = os.path.join(output_dir, "explored_objects", f"obj_{obj_counter}")
@@ -292,7 +298,7 @@ def pursuit(z_dim,
             
             # if the object is invalid
             if max_val_acc < express_threshold:
-                write_log(log_file, f"[Warning] current object (data path: {obj_data_dir}) is invalid! The validation acc should be at least {express_threshold}, current acc {max_val_acc}; All records will be removed !")
+                write_log(log_file, f"[Warning] current object (data path: {obj_data_dir}) is unqualified! The validation acc should be at least {express_threshold}, current acc {max_val_acc}; All records will be removed !")
                 # reset backbone and hypernet
                 if backbone is not None:
                     init_backbone(os.path.join(checkpoint_dir, f'backbone.pth'), backbone, device, freeze=True)
@@ -329,14 +335,21 @@ def pursuit(z_dim,
                 max_val_acc = 0.0
             
             if can_be_expressed(max_val_acc, express_threshold):
-                write_log(log_file, f"new z can be expressed by current bases, max val acc: {max_val_acc}, don't add it to bases")
+                write_log(log_file, f"new z can be expressed by current bases, redundant! max val acc: {max_val_acc}, don't add it to bases")
                 # save object's z
                 write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")
                 examine_coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), bases, hypernet)
             else:
                 # save z as a new base
-                write_log(log_file, f"new z can't be expressed by current bases, express max val acc: {max_val_acc}, add 'base_{'%04d' % base_num}.json' to bases")
+                write_log(log_file, f"new z can't be expressed by current bases, not redundant! express max val acc: {max_val_acc}, add 'base_{'%04d' % base_num}.json' to bases")
                 z_net.save_z(os.path.join(base_dir, f"base_{'%04d' % base_num}.json"), hypernet)
+                # record base info
+                base_info.append({
+                    "index": obj_counter,
+                    "data_dir": obj_data_dir,
+                    "base_file": f"base_{'%04d' % base_num}.json",
+                    "z_file": f"z_{'%04d' % obj_counter}.json"
+                })
                 # save object's z
                 write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")   
                 z_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), hypernet)
@@ -346,14 +359,19 @@ def pursuit(z_dim,
             # save object's z
             write_log(log_file, f"object {obj_counter} pursuit complete, save object z 'z_{'%04d' % obj_counter}.json' to {z_dir}")    
             coeff_net.save_z(os.path.join(z_dir, f"z_{'%04d' % obj_counter}.json"), bases, hypernet)
-            
+        
+        # record object (z) info   
         z_info.append({
             "index": obj_counter,
             "data_dir": obj_data_dir,
             "z_file": f"z_{'%04d' % obj_counter}.json"
         })
+        
+        # update (save) info files
         with open(os.path.join(output_dir, "z_info.json"), "w") as f:
             json.dump(z_info, f)
+        with open(os.path.join(output_dir, "base_info.json"), "w") as f:
+            json.dump(base_info, f)
         
         write_log(log_file, f"save hypernet and backbone to {checkpoint_dir}, move to next object")     
         new_obj_dataset, obj_data_dir = dataSelector.next()

@@ -1,6 +1,7 @@
 import os
 import torch
 import argparse
+from utils.util import create_dir
 
 from application.oneshot._dataset import select_dataset
 from application.oneshot._models import select_model
@@ -67,8 +68,7 @@ def main(args):
     default_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # add output dir
-    if not os.path.isdir(args.output_dir):
-        os.makedirs(args.output_dir)
+    create_dir(args.output_dir)
     
     net = select_model(model=args.model,
                        device=default_device,

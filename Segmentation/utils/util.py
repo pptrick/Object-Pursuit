@@ -2,7 +2,7 @@ import os
 
 def create_dir(path):
     if not os.path.exists(path):
-        os.mkdir(path)
+        os.makedirs(path)
         
 def write_log(log_file, string):
     print(string)

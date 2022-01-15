@@ -34,6 +34,8 @@ def get_args():
                         help='pursuit threshold (of whether an object can be expressed)')
     parser.add_argument('-use_backbone', '--use_backbone', dest='use_backbone', action="store_true",
                         help='if true, the weights of the backbone will not be predicted by the hypernet')
+    parser.add_argument('-save_interval', '--save_interval', dest='save_interval', type=int, default=0,
+                        help='the interval object number of saving checkpoints during pursuit')
     
     return parser.parse_args()
 
@@ -52,6 +54,7 @@ if __name__ == '__main__':
             select_strat=args.order,
             express_threshold=args.thres,
             use_backbone=args.use_backbone,
+            save_temp_interval=args.save_interval,
             log_info=f"Data: {args.order}; threshold: {args.thres}")
 
     # simplify_bases(log_dir='./checkpoints_simple_zs/',
