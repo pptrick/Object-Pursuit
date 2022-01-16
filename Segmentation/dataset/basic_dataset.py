@@ -1,10 +1,9 @@
 import os
 from os.path import splitext
 from os import listdir
+import random
 import numpy as np
 from glob import glob
-import torch
-import random
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms

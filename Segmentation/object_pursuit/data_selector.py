@@ -3,7 +3,6 @@ import copy
 import random
 
 from dataset.basic_dataset import BasicDataset
-from dataset.davis_dataset import DavisDataset
 
 class iThorDataSelector(object):    
     def __init__(self, data_dir, strat="sequence", resize=None, shuffle_seed=None, insert_seen=True, limit_num=None):

@@ -8,7 +8,7 @@ from application.oneshot._models import select_model
 from application.oneshot._train import train_nshot
 
 def nshot_get_args():
-    parser = argparse.ArgumentParser(description='Run Pursuit Algorithm (or remove redundancy of pretrained bases)',
+    parser = argparse.ArgumentParser(description='One shot learning',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # general
     parser.add_argument('-dim', '--z_dim', dest='z_dim', type=int, nargs='?', default=100,

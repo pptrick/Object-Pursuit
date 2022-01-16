@@ -106,47 +106,8 @@ class Singlenet(nn.Module):
             # backbone forward
             x, low_level_feat = self.backbone(input)
             return deeplab_forward_no_backbone(input, x, low_level_feat, weights)
-    
 
-class Multinet(nn.Module):
-    n_channels = 3
-    n_classes = 1
-    def __init__(self, obj_num, z_dim, freeze_backbone=True, use_backbone=True):
-        super(Multinet, self).__init__()
-        self.obj_num = obj_num
-        self.z_dim = z_dim
-        self.z = nn.Parameter(torch.randn((obj_num, z_dim)))
-        # self.freeze_z_one_hot()
-        if use_backbone:
-            self.hypernet = Hypernet(z_dim, param_dict=deeplab_param_decoder)
-        else:
-            self.hypernet = Hypernet(z_dim, param_dict=deeplab_param)
-        self.use_backbone = use_backbone
-        
-        if use_backbone:
-            self.backbone = build_backbone("resnetsub", 16, nn.BatchNorm2d, pretrained=True)
-            if freeze_backbone:
-                for param in self.backbone.parameters():
-                    param.requires_grad = False
-        
-    def freeze_z_one_hot(self):
-        self.z.data = torch.zeros((self.obj_num, self.z_dim))
-        for i in range(self.obj_num):
-            self.z.data[i][i] = torch.tensor(1.0)
-        self.z.requires_grad = False
-        
-    def forward(self, input, ident):
-        ident = ident[0].item()
-        z = self.z[ident]
-        weights = self.hypernet(z)
-        if not self.use_backbone:
-            return deeplab_forward(input, weights), z
-        else:
-            # backbone forward
-            x, low_level_feat = self.backbone(input)
-            return deeplab_forward_no_backbone(input, x, low_level_feat, weights), z
 
-    
 class Coeffnet(nn.Module):
     n_channels = 3
     n_classes = 1
