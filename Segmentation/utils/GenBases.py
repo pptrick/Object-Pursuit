@@ -2,7 +2,7 @@ import os
 import torch
 from tqdm import tqdm
 
-from model.coeffnet.coeffnet import Multinet
+from pretrain._model import Multinet
 
 def genBases(checkpoint_path, output_dir, device=torch.device('cpu'), extension=".json"):
     """generate base files (z + corresponding output weights) based on trained Multinet
