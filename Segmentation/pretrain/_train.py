@@ -28,7 +28,7 @@ def joint_train(net,
     # init
     n_size = len(dataloader_train)
     optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=1e-7, momentum=0.9)
-    scheduler_lr=optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.5)
+    scheduler_lr=optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.7)
     
     # log & checkpoint
     create_dir(ckpt_path)
@@ -36,12 +36,14 @@ def joint_train(net,
     if args is not None:
         data_text = f'''Data & Model info:
             dataset:         {args.dataset}
+            class(obj) num:  {dataset_eval.class_num}
             z dim:           {args.z_dim}
             data dir:        {args.data_dir}
             resize:          {args.resize}
             num balance:     {args.num_balance}
             use backbone:    {args.use_backbone}
             freeze backbone: {args.freeze_backbone}
+            use trainset:    {args.trainset_only}
         \n'''
         write_log(logf, data_text)
     

@@ -45,6 +45,8 @@ def pretrain_get_args():
                         help='if true, make data sample numbers of all objects the same')
     parser.add_argument('-freeze_backbone', '--freeze_backbone', dest='freeze_backbone', action="store_true",
                         help='if true, the backbone will not be updated during training')
+    parser.add_argument('-trainset_only', '--trainset_only', dest='trainset_only', action="store_true",
+                        help='if true, only use training set in the whole dataset during training')
     
     return parser.parse_args()
 
@@ -54,6 +56,15 @@ def main(args):
     # get dataset
     if args.dataset == "DAVIS":
         dataloader, dataset = Davis_Multi_Dataloader(args.data_dir, 
+                                                     args.batch_size, 
+                                                     resize=args.resize,
+                                                     num_workers=8,
+                                                     num_balance=args.num_balance,
+                                                     random_crop=True,
+                                                     trainset_only=args.trainset_only)
+        class_num = dataset.class_num
+    elif args.dataset == "iThor":
+        dataloader, dataset = iThor_Multi_Dataloader(args.data_dir, 
                                                      args.batch_size, 
                                                      resize=args.resize,
                                                      num_workers=8,

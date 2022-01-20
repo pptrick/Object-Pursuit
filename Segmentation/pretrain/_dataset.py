@@ -130,26 +130,29 @@ class MultiJointSampler(Sampler):
             
     def __len__(self):
         return self.length
-      
-        
-# def Multiobj_Dataloader(data_dir, batch_size, num_workers=1, prefix="data_FloorPlan3_", resize = None):
-#     ds = MultiobjDataset(data_dir=data_dir, prefix=prefix, resize=resize)
-#     sampler = SameClassSampler(ds, batch_size)
-#     return DataLoader(ds, num_workers=num_workers, batch_sampler=sampler), ds
 
-def Davis_Multi_Dataloader(data_dir, batch_size, resize=None, num_workers=1, num_balance=False, random_crop=True):
+
+def Davis_Multi_Dataloader(data_dir, batch_size, resize=None, num_workers=1, num_balance=False, random_crop=True, trainset_only=False):
+    # sample data_dir: [dir to davis]/DAVIS
     img_path = "JPEGImages"
     mask_path = "Annotations"
     res = "480p"
+    val_obj = ["blackswan", "bmx-trees", "breakdance", "camel", "car-roundabout", "car-shadow", "cows", "dance-twirl", "dog", "drift-chicane", "drift-straight", "goat", "horsejump-high", "kite-surf", "libby", "motocross-jump", "paragliding-launch", "parkour", "scooter-black", "soapbox"]
     objects = sorted(os.listdir(os.path.join(data_dir, img_path, res)))
+    if trainset_only:
+        objects = [obj for obj in objects if obj not in val_obj]
     img_dirs = [os.path.join(data_dir, img_path, res, obj) for obj in objects]
     mask_dirs = [os.path.join(data_dir, mask_path, res, obj) for obj in objects]
     dataset = MultiJointDataset(img_dirs, mask_dirs, resize=resize, random_crop=random_crop)
     sampler = MultiJointSampler(dataset, batch_size, num_balance=num_balance)
     return DataLoader(dataset, num_workers=num_workers, batch_sampler=sampler), dataset
-    
-# if __name__ == "__main__":
-#     dataloader, _ = Multiobj_Dataloader("/data/pancy/iThor/single_obj/FloorPlan3", batch_size=4, prefix="data_FloorPlan3_")
-#     print(len(dataloader))
-#     for step, data in enumerate(dataloader):
-#         print(data['cls'])
+
+def iThor_Multi_Dataloader(data_dir, batch_size, resize=None, num_workers=1, num_balance=False, random_crop=True):
+    # sample data_dir: [dir to ithor]/ithor/Pretrain/
+    assert os.path.isdir(data_dir)
+    objects = [obj for obj in sorted(os.listdir(data_dir)) if os.path.isdir(os.path.join(data_dir, obj))]
+    img_dirs = [os.path.join(data_dir, obj, "imgs") for obj in objects]
+    mask_dirs = [os.path.join(data_dir, obj, "masks") for obj in objects]
+    dataset = MultiJointDataset(img_dirs, mask_dirs, resize=resize, random_crop=random_crop)
+    sampler = MultiJointSampler(dataset, batch_size, num_balance=num_balance)
+    return DataLoader(dataset, num_workers=num_workers, batch_sampler=sampler), dataset
