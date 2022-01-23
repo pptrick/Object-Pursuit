@@ -3,8 +3,8 @@ import argparse
 from utils.GenBases import genBases
 from object_pursuit.pursuit import pursuit
 from object_pursuit.rm_redundency import simplify_bases
+from object_pursuit.eval import evalPursuit
 
-chuanyu_dir = "/orion/u/pancy/project/Object-Pursuit/Segmentation"
 default_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def get_args():
@@ -36,26 +36,37 @@ def get_args():
                         help='if true, the weights of the backbone will not be predicted by the hypernet')
     parser.add_argument('-save_interval', '--save_interval', dest='save_interval', type=int, default=0,
                         help='the interval object number of saving checkpoints during pursuit')
+    parser.add_argument('-eval', '--eval', dest='eval', action="store_true",
+                        help='use this flag if you want to evaluate pursuit result')
     
     return parser.parse_args()
 
 if __name__ == '__main__':    
     args = get_args()
-    pursuit(z_dim=args.z_dim, 
-            data_dir=args.data_dir,
-            output_dir=args.output_dir,
-            device=default_device,
-            dataset=args.dataset,
-            initial_zs=args.zs_dir,
-            pretrained_bases=args.bases_dir,
-            pretrained_backbone=args.pretrained_backbone,
-            pretrained_hypernet=args.pretrained_hypernet,
-            resize=args.resize,
-            select_strat=args.order,
-            express_threshold=args.thres,
-            use_backbone=args.use_backbone,
-            save_temp_interval=args.save_interval,
-            log_info=f"Data: {args.order}; threshold: {args.thres}")
+    if not args.eval:
+        pursuit(z_dim=args.z_dim, 
+                data_dir=args.data_dir,
+                output_dir=args.output_dir,
+                device=default_device,
+                dataset=args.dataset,
+                initial_zs=args.zs_dir,
+                pretrained_bases=args.bases_dir,
+                pretrained_backbone=args.pretrained_backbone,
+                pretrained_hypernet=args.pretrained_hypernet,
+                resize=args.resize,
+                select_strat=args.order,
+                express_threshold=args.thres,
+                use_backbone=args.use_backbone,
+                save_temp_interval=args.save_interval,
+                log_info=f"Data: {args.order}; threshold: {args.thres}")
+    else:
+        evalPursuit(z_dim=args.z_dim, 
+                    device=default_device, 
+                    dataset=args.dataset, 
+                    data_dir=args.data_dir, 
+                    ckpt_dir=args.output_dir, 
+                    batch_size=8, 
+                    use_backbone=args.use_backbone)
 
     # simplify_bases(log_dir='./checkpoints_simple_zs/',
     #                output_dir='./Bases_allweights/',
