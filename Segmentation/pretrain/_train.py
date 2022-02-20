@@ -81,7 +81,7 @@ def joint_train(net,
                 true_masks = true_masks.to(device=device, dtype=torch.float32)
                 
                 # forward
-                masks_pred, z = net(imgs, ident)
+                masks_pred, _ = net(imgs, ident)
                 loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks)
                 
                 # pos_weight = get_pos_weight_from_batch(true_masks)
@@ -113,7 +113,8 @@ def joint_train(net,
                 max_eval_acc = acc
                 write_log(logf, f"mean acc {acc} reached the highest eval acc ~") 
                 if save_ckpt:
-                    torch.save(net.state_dict(), os.path.join(ckpt_path, f'pretrain_epoch_{epoch}.pth'))
+                    # torch.save(net.state_dict(), os.path.join(ckpt_path, f'pretrain_epoch_{epoch}.pth'))
+                    torch.save(net.state_dict(), os.path.join(ckpt_path, f'pretrain_best.pth'))
                     write_log(logf, f"checkpoint saved") 
         
     write_log(logf, "Training ends!") 

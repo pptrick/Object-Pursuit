@@ -68,7 +68,7 @@ def joint_eval(multinet,
                batch_size=8,
                use_IOU=False):
     # multinet and multidataset should be type-specified
-    assert isinstance(multinet, Multinet) and isinstance(multidataset, MultiJointDataset)
+    assert isinstance(multidataset, MultiJointDataset)
     # ckpt & record
     eval_record = []
     mean_acc = []

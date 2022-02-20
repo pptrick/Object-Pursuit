@@ -16,13 +16,15 @@ def pretrain_get_args():
                         help='output directory')
     
     # data
-    parser.add_argument('-data', '--data', dest='data_dir', type=str, nargs='?', help='directory of input data, the upper dir')
+    parser.add_argument('-data', '--data', dest='data_dir', type=str, nargs='+', help='directory of input data, the upper dir')
     
     # select
     parser.add_argument('-resize', '--resize', dest='resize', type=tuple, nargs='?', default=(256, 256),
                         help='resize of training image')
-    parser.add_argument('-dataset', '--dataset', dest='dataset', type=str, default="DAVIS", choices=["iThor", "KITTI", "DAVIS"],
+    parser.add_argument('-dataset', '--dataset', dest='dataset', nargs='+', type=str, default="DAVIS", choices=["iThor", "KITTI", "DAVIS", "VOS"],
                         help='select dataset')
+    parser.add_argument('-model', '--model', dest='model', type=str, default="Multinet", choices=["Multinet", "MultiDeeplab"],
+                        help='select model type')
     
     # training setting
     parser.add_argument('-batch_size', '--batch_size', dest='batch_size', type=int, nargs='?', default=8,
@@ -54,33 +56,24 @@ def main(args):
     default_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # get dataset
-    if args.dataset == "DAVIS":
-        dataloader, dataset = Davis_Multi_Dataloader(args.data_dir, 
-                                                     args.batch_size, 
-                                                     resize=args.resize,
-                                                     num_workers=8,
-                                                     num_balance=args.num_balance,
-                                                     random_crop=True,
-                                                     trainset_only=args.trainset_only)
-        class_num = dataset.class_num
-    elif args.dataset == "iThor":
-        dataloader, dataset = iThor_Multi_Dataloader(args.data_dir, 
-                                                     args.batch_size, 
-                                                     resize=args.resize,
-                                                     num_workers=8,
-                                                     num_balance=args.num_balance,
-                                                     random_crop=True)
-        class_num = dataset.class_num
-    else:
-        raise NotImplementedError
+    dataloader, dataset = genDataLoader(args.dataset,
+                                        args.data_dir, 
+                                        args.batch_size, 
+                                        resize=args.resize,
+                                        num_workers=8,
+                                        num_balance=args.num_balance,
+                                        random_crop=True,
+                                        trainset_only=args.trainset_only)
+    class_num = dataset.class_num
     
     # get model
-    net = get_multinet(class_num, 
-                 args.z_dim, 
-                 default_device, 
-                 use_backbone=args.use_backbone,
-                 freeze_backbone=args.freeze_backbone
-                 )
+    net = get_multinet(args.model,
+                    class_num, 
+                    args.z_dim, 
+                    default_device, 
+                    use_backbone=args.use_backbone,
+                    freeze_backbone=args.freeze_backbone
+                    )
     
     # train
     joint_train(net=net,

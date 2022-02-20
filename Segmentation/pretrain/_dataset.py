@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import random
 from torch.utils.data import DataLoader, Dataset
@@ -132,7 +133,7 @@ class MultiJointSampler(Sampler):
         return self.length
 
 
-def Davis_Multi_Dataloader(data_dir, batch_size, resize=None, num_workers=1, num_balance=False, random_crop=True, trainset_only=False):
+def _Davis_Multi(data_dir, trainset_only=False):
     # sample data_dir: [dir to davis]/DAVIS
     img_path = "JPEGImages"
     mask_path = "Annotations"
@@ -143,16 +144,55 @@ def Davis_Multi_Dataloader(data_dir, batch_size, resize=None, num_workers=1, num
         objects = [obj for obj in objects if obj not in val_obj]
     img_dirs = [os.path.join(data_dir, img_path, res, obj) for obj in objects]
     mask_dirs = [os.path.join(data_dir, mask_path, res, obj) for obj in objects]
-    dataset = MultiJointDataset(img_dirs, mask_dirs, resize=resize, random_crop=random_crop)
-    sampler = MultiJointSampler(dataset, batch_size, num_balance=num_balance)
-    return DataLoader(dataset, num_workers=num_workers, batch_sampler=sampler), dataset
+    return img_dirs, mask_dirs
 
-def iThor_Multi_Dataloader(data_dir, batch_size, resize=None, num_workers=1, num_balance=False, random_crop=True):
+def _iThor_Multi(data_dir, trainset_only=False):
     # sample data_dir: [dir to ithor]/ithor/Pretrain/
     assert os.path.isdir(data_dir)
     objects = [obj for obj in sorted(os.listdir(data_dir)) if os.path.isdir(os.path.join(data_dir, obj))]
     img_dirs = [os.path.join(data_dir, obj, "imgs") for obj in objects]
     mask_dirs = [os.path.join(data_dir, obj, "masks") for obj in objects]
+    return img_dirs, mask_dirs
+
+def _VOS_Multi(data_dir, trainset_only=False):
+    img_dir = os.path.join(data_dir, "JPEGImages")
+    mask_dir = os.path.join(data_dir, "Annotations")
+    video_idx = sorted(os.listdir(img_dir))
+    out_img_dirs, out_mask_dirs = [], []
+    category = {}
+    for seq in video_idx:
+        with open(os.path.join(mask_dir, seq, "meta.json"), 'r') as f:
+            meta_info = json.load(f)["objects"]
+            if len(meta_info)==1 and "1" in meta_info:
+                if len(meta_info["1"]["frames"])>=32: # select sequences whose frames are more than 32
+                    out_img_dirs.append(os.path.join(img_dir, seq))
+                    out_mask_dirs.append(os.path.join(mask_dir, seq))
+                    cat = meta_info["1"]["category"]
+                    if cat in category:
+                        category[cat] += 1
+                    else:
+                        category[cat] = 1
+            else:
+                continue
+    print(category)
+    return out_img_dirs, out_mask_dirs
+
+def genDataLoader(dataset, data_dir, batch_size, resize=None, num_workers=1, num_balance=False, random_crop=True, trainset_only=False):
+    assert len(dataset) == len(data_dir)
+    dataset_map = {
+        "DAVIS": _Davis_Multi,
+        "iThor": _iThor_Multi,
+        "VOS": _VOS_Multi,
+    }
+    img_dirs, mask_dirs = [], []
+    i = 0
+    for ds in dataset:
+        if ds in dataset_map:
+            _img_dirs, _mask_dirs = dataset_map[ds](data_dir[i], trainset_only)
+            img_dirs += _img_dirs
+            mask_dirs += _mask_dirs
+            i += 1
     dataset = MultiJointDataset(img_dirs, mask_dirs, resize=resize, random_crop=random_crop)
     sampler = MultiJointSampler(dataset, batch_size, num_balance=num_balance)
     return DataLoader(dataset, num_workers=num_workers, batch_sampler=sampler), dataset
+            
