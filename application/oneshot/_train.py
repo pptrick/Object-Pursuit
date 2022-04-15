@@ -5,13 +5,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from evaluation.eval_net import eval_net
 
-from dataset.basic_dataset import BasicDataset, BasicDataset_nshot
-from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
 from dataset.visualize import vis_predict
 
 from utils.util import create_dir, write_log

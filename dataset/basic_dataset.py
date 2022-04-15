@@ -20,8 +20,6 @@ class BasicDataset(Dataset):
         self.random_crop = random_crop
         
         self._get_ids()
-        # logging.info(f'Creating dataset with {len(self.ids)} examples')
-        print(f'Creating dataset with {len(self.ids)} examples')
         
         if shuffle_seed is not None:
             r = random.random

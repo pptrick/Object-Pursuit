@@ -64,7 +64,7 @@ class Singlenet(nn.Module):
     def init_hypernet(self, hypernet_path, freeze=True):
         if hypernet_path is not None:
             print(hypernet_path)
-            assert(os.path.isfile(hypernet_path) and hypernet_path.endswith(".pth"))
+            assert(os.path.isfile(hypernet_path) and hypernet_path.endswith(".pth")) # fail if the hypernet parameters file path is wrong
             state_dict = torch.load(hypernet_path, map_location=self.device)
             hypernet_dict = collections.OrderedDict()
             for param in state_dict:
@@ -81,7 +81,7 @@ class Singlenet(nn.Module):
                 
     def init_backbone(self, backbone_path, freeze = True):
         if backbone_path is not None:
-            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth"))
+            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth")) # fail if the backbone parameters file path is wrong
             state_dict = torch.load(backbone_path, map_location=self.device)
             backbone_dict = collections.OrderedDict()
             for param in state_dict:
@@ -174,7 +174,7 @@ class Coeffnet(nn.Module):
     def init_hypernet(self, hypernet_path):
         if hypernet_path is not None:
             print(hypernet_path)
-            assert(os.path.isfile(hypernet_path) and hypernet_path.endswith(".pth"))
+            assert(os.path.isfile(hypernet_path) and hypernet_path.endswith(".pth")) # fail if the hypernet parameters file path is wrong
             state_dict = torch.load(hypernet_path, map_location=self.device)
             hypernet_dict = collections.OrderedDict()
             for param in state_dict:
@@ -190,7 +190,7 @@ class Coeffnet(nn.Module):
             
     def init_backbone(self, backbone_path, freeze = True):
         if backbone_path is not None:
-            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth"))
+            assert(os.path.isfile(backbone_path) and backbone_path.endswith(".pth")) # fail if the backbone parameters file path is wrong
             state_dict = torch.load(backbone_path, map_location=self.device)
             backbone_dict = collections.OrderedDict()
             for param in state_dict:

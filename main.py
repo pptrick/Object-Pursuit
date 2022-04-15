@@ -36,7 +36,7 @@ def get_args():
     parser.add_argument('-save_interval', '--save_interval', dest='save_interval', type=int, default=0,
                         help='the interval object number of saving checkpoints during pursuit')
     parser.add_argument('-eval', '--eval', dest='eval', action="store_true",
-                        help='use this flag if you want to evaluate pursuit result')
+                        help='use this flag to evaluate pursuit result (eval mode)')
     
     return parser.parse_args()
 

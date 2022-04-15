@@ -2,8 +2,6 @@
 import torch
 from torch.utils.data import random_split
 from dataset.basic_dataset import BasicDataset, BasicDataset_nshot
-from dataset.davis_dataset import DavisDataset, OneshotDavisDataset
-from dataset.kitti_dataset import KittiTrainDataset, KittiTestDataset
 
 def select_dataset(dataset,
                    img_dir,
