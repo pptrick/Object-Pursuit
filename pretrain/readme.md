@@ -9,4 +9,4 @@ Here are the specific descriptions of the modules in `pretrain`:
 - `_train.py` : a script for joint training.
 - `_eval.py` : a script for evaluation of joint training. Specifically, evaluate each object separately using its representation and the current hypernet.
 
-BTW, you may also find a script `joint_pretrain.py` outside this directory; run it.
+You may also find a script `joint_pretrain.py` outside this directory which is the entry script of this part.

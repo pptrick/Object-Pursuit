@@ -1,25 +1,28 @@
 # readme for `coeffnet`
-> 为了方便暂时用中文描述，之后改成英文
+We define the hypernetwork, the primary network (deeplab segmentation blocks) and the latent vector z in this directory. The overall architecture can be represented by the following figure:
+
+ <img src="architecture.png">
 
 ## hypernet
-定义hypernet最上层结构的文件为`hypernet.py`，其中`class Hypernet(nn.Module)`为hypernet的整体结构，包含若干个conv-hyper block。
 
-定义hypernet block结构的文件为`hypernet_block.py`，其中`HypernetFCBlock`为fully-connected版本的block，现在已经不使用。`HypernetConvBlock`为现在使用的convolution版本。
+The hypernet model is defined in `hypernet.py`. `class Hypernet(nn.Module)` is the overall architecture of the hypernet, which contains several convolutional hyper-blocks.
 
-## segmentation network(deeplab)
-segmentation“网络”的定义位于`deeplab_block`中，事实上我们的segmentation网络实现上只是一些函数，同时接受training data以及weights作为输入；因此`deeplab_block`是将deeplab结构转换成了函数形式。其中`resnet.py`就是deeplab的backbone（resnet18）
+The hyper-block is defined in `hypernet_block.py`.  `HypernetFCBlock` is the fully-connected hyper-block, which is no longer used anymore. `HypernetConvBlock` is the convolutional hyper-block we currently use.
+
+## primary network(deeplab segmentation network)
+The primary network, or segmentation network, is defined in `deeplab_block` directory, each file defines an independent part in deeplabv3+. However, these blocks are actually functions instead of network module, taking the training data and **network weights** as input. We implement both the function version and the network version of the backbone (resnet18).
 
 ## overall structure
-由于在pursuit以及其他应用中还需要优化z或叠加系数coeff，并使用函数版本的deeplab进行segmentation，我在`coeffnet.py`和`coeffnet_simple.py`中还定义了一些上层网络。这两个文件中都定义了`Singlenet`和`Coeffnet`两个网络，其中`Singlenet`包含可优化的z参数，`Coeffnet`包含可优化的叠加系数coeff，二者都是将图片作为输入，输出predicted mask。
+In *Object Pursuit* and other applications, we need to learn a latent vector z for novel object representation or optimize combination coefficients of the bases for object expression.  The latent vector z is the input of the hypernetwork, and it could be implemented as optimizable parameters, so does the coefficients.  For convenience, we design top-level models that help manage hypernetwork, primary network and latent codes. These models are defined in `coeffnet.py` and `coeffnet_simple.py`. Both of these files define `Singlenet` and `Coeffnet`, the former contains and optimizes the latent code z, the latter contains and optimizes the coefficients. Both of them take color images as input and output segmentation masks. The difference between these two files is that the models defined in `coeffnet_simple.py` contain parameters of z/coeff only, and the hypernet/backbone should be instantiate somewhere outside, while  the models defined in `coeffnet.py`  contain parameters of z/coeff, the hypernet and the backbone. The `coeffnet.py` is usually used in one-shot applications while the `coeffnet_simple.py` is used in *Object Pursuit* for decoupling.
 
-`coeffnet.py`和`coeffnet_simple.py`两个文件的不同在于，`coeffnet_simple.py`中定义的网络的参数仅包括z/coeff，在forward时，需要额外定义hypernet和backbone并作为`forward`函数参数传入；而`coeffnet.py`中定义的网络的参数不仅包括z/coeff，还包括hypernet以及可能有的backbone，相当于将所有要用到的网络打包到了一个大网络中。
+For pretrained models loading (take `coeffnet.py` as example):
 
-网络预训练模型载入（以下针对`coeffnet.py`文件）：
-- 载入pretrained z: 对于`Singlenet`，可能需要使用pretrained z进行初始化，这时候可以使用`load_z`函数，load的对象可以是singlenet的参数文件(.pth)或者z记录文件(.json)
-- 载入pretrained bases: 对于`Coeffnet`，可能需要载入预训练的bases，用于叠加；这时候直接将bases的目录（一个包含很多.json文件的目录，其中的.son文件称为z记录文件）传入`Coeffnet`的`base_dir`参数。
-- 载入pretrained hypernet: 调用`init_hypernet`函数即可，`hypernet_path`为pretrained model的路径(.pth文件)，`freeze`为是否在载入后固定其参数，使得其在训练过程中不变。
-- 载入pretrained backbone: 需要注意，若`use_backbone`为False，则网络不定义backbone，backbone的参数由hypernet生成，这时候不能进行初始化backbone的操作。若`use_backbone`为True，网络会定义一个backbone，这时调用`init_backbone`即可完成载入。
+- load pretrained z: For `Singlenet`, it is likely for you to initialize its z with pretrained z. You may use `load_z()` to load z from a `Singlenet` parameter file (.pth) or a z file (.json)
+- load pretrained bases: For `Coeffnet`, it is likely for you to load pretrained bases for linear combination. You could pass the directory of bases (a dir contains several z file) to the `base_dir` param when constructing the `Coeffnet`
+- load pretrained hypernet: use `init_hypernet()`, pass the path of the pretrained model (.pth) to `hypernet_path`. (Both top-level model and hypernetwork are accepted)
+- load pretrained backbone: please be careful, if `use_backbone` is set to False, the backbone won't be defined as a network, but as a function that takes weights generated the hypernet.  if `use_backbone` is set to True, use `init_backbone` to load a pretrained backbone.
 
-注意尽可能不要使用`torch.load`直接载入，因为网络结构不尽相同，以上载入都做了兼容处理。
+> Please avoid using `torch.load` to load pretrained models directly. Due to the diversity of network implementation, we have made our loading method compatible to all forms of network we defined.
 
-另外，用于multi-objects joint training的`Multinet`位于`coeffnet.py`文件中。
+Also, you may find `Multinet` for joint training in `pretrain/_model.py` .
+
