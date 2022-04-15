@@ -8,7 +8,7 @@ from model.coeffnet.hypernet import Hypernet
 from model.coeffnet.coeffnet_simple import Backbone
 from model.coeffnet.coeffnet_simple import init_backbone, init_hypernet
 from object_pursuit.data_selector import iThorDataSelector, DavisDataSelector, CO3DDataSelector
-from utils.GenBases import genBases
+from utils.gen_bases import genBases
 from object_pursuit.train import train_net, have_seen
 from utils.util import *
 from model.coeffnet.config.deeplab_param import deeplab_param, deeplab_param_decoder

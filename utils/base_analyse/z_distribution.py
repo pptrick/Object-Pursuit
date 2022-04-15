@@ -1,3 +1,4 @@
+'''view latent code z in low-dimensional manifold'''
 import os
 from sklearn import manifold
 import torch
@@ -34,12 +35,3 @@ def shuffle(zs):
     index = [i for i in range(len(zs))]
     random.shuffle(index)
     return zs[index]
-
-if __name__ == "__main__":
-    joint_training_path = "/orion/u/pancy/project/Object-Pursuit/Segmentation/checkpoints_pretrain/checkpoints_pretrain_VOS_davis/pretrain_best.pth"
-    zs, z_file = load_z(joint_training_path)
-    # zs = shuffle(zs)
-    # manifold = tSNE(zs)
-    manifold = pca(zs)
-    print("result: ", manifold)
-    np.save("pca_694bases_shuffle.npy", manifold)

@@ -8,7 +8,6 @@ import torch.nn.functional as F
 
 from pretrain._eval import joint_eval
 
-from utils.pos_weight import get_pos_weight_from_batch
 from utils.util import create_dir, write_log
 
 def joint_train(net,
@@ -83,11 +82,6 @@ def joint_train(net,
                 # forward
                 masks_pred, _ = net(imgs, ident)
                 loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks)
-                
-                # pos_weight = get_pos_weight_from_batch(true_masks)
-                # seg_loss = F.binary_cross_entropy_with_logits(masks_pred, true_masks, pos_weight=torch.tensor([pos_weight]).cuda())
-                # l1_loss = 0.1 * F.l1_loss(z, torch.zeros(z.size()).to(z.device))
-                # loss = seg_loss + l1_loss
                 
                 # backward
                 pbar.set_postfix(**{'loss (batch)': loss.item()})

@@ -5,6 +5,7 @@ import torch.nn as nn
 
 
 class MemoryLoss(nn.Module):
+    """The loss function for forgetting prevention"""
     def __init__(self, Base_dir, device):
         super(MemoryLoss, self).__init__()
         assert(os.path.isdir(Base_dir))
@@ -26,7 +27,7 @@ class MemoryLoss(nn.Module):
     def _l2_loss(self, pred, gt, coeff=1.0):
         for param in gt:
             loss = coeff * torch.norm(pred[param]-gt[param])
-            loss.backward()
+            loss.backward() # TODO: backward() in a forward() is not a regular way. We do it in this way to prevent CUDA memory overflow, by releasing the computational graph immediately.
             
     def forward(self, hypernet, mem_coeff):
         index_list = range(len(self.z))

@@ -153,8 +153,6 @@ class SingleObjEnv:
     
 if __name__ == "__main__":
     obj = 'Pan'
-    env = SingleObjEnv(objectType=obj, scene=f"FloorPlan2", change_pos_times=200, remove_other_object_prob=0.8, max_data_num=2000, save_dir=f"/data/pancy/iThor/single_obj/FloorPlan2_ext/",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
-    # env = SingleObjEnv(objectType=obj, scene=f"FloorPlan2", change_pos_times=200, remove_other_object_prob=0.8, max_data_num=2000, save_dir=f"./",local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
-    # env = SingleObjEnv(objectType="SaltShaker", scene=f"FloorPlan2", change_pos_times=200, out_dir=f"./data_FloorPlan4_Cup", local_executable_path="/home/pancy/IP/ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
+    env = SingleObjEnv(objectType=obj, scene=f"FloorPlan2", change_pos_times=200, remove_other_object_prob=0.8, max_data_num=2000, save_dir=f"/data/",local_executable_path="../ithor/unity/builds/thor-Linux64-local/thor-Linux64-local")
     env.genData()
     

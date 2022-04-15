@@ -1,8 +1,7 @@
 import torch
 import argparse
-from utils.GenBases import genBases
+from utils.gen_bases import genBases
 from object_pursuit.pursuit import pursuit
-from object_pursuit.rm_redundency import simplify_bases
 from object_pursuit.eval import evalPursuit
 
 default_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -12,7 +11,7 @@ def get_args():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-dim', '--z_dim', dest='z_dim', type=int, nargs='?', default=100,
                         help='dimension of z')
-    parser.add_argument('-d', '--data', dest='data_dir', type=str, nargs='?', default="/orion/u/pancy/data/object-pursuit/ithor/Dataset/Train",
+    parser.add_argument('-d', '--data', dest='data_dir', type=str, nargs='?',
                         help='training data directory')
     parser.add_argument('-o', '--out', dest='output_dir', type=str, nargs='?', default="./checkpoints",
                         help='output directory')
@@ -67,13 +66,3 @@ if __name__ == '__main__':
                     ckpt_dir=args.output_dir, 
                     batch_size=8, 
                     use_backbone=args.use_backbone)
-
-    # simplify_bases(log_dir='./checkpoints_simple_zs/',
-    #                output_dir='./Bases_allweights/',
-    #                base_path="./checkpoints_conv_allweights/checkpoint.pth",
-    #                hypernet_path="./checkpoints_conv_allweights/checkpoint.pth",
-    #                backbone_path="./checkpoints_conv_allweights/checkpoint.pth",
-    #                record_path="./checkpoints_conv_allweights/record.json",
-    #                z_dim=100,
-    #                threshold=0.7,
-    #                use_backbone=False)

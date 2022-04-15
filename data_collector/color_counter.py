@@ -8,9 +8,15 @@ def norm(x):
     return (x-np.min(x))/(np.max(x)-np.min(x))
 
 class ColorCounter(object):
-    def __init__(self, img_dir, mask_dir):
+    def __init__(self, img_dir, mask_dir, save_path="color_distribution.png"):
+        """calculate color distribution of the generated data, calculate the masked region only 
+
+        Args:
+            img_dir (str): path to rgb image directory
+            mask_dir (str): path to mask directory
+        """
         b, g, r = self._calHistinDir(img_dir, mask_dir)
-        self._PlotHist(b, g, r)
+        self.PlotHist(b, g, r, save_path)
     
     def _calHist(self, img_path, mask_path):
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
@@ -43,14 +49,10 @@ class ColorCounter(object):
                 g_hist += g
             return b_hist, g_hist, r_hist
     
-    def _PlotHist(self, b_hist, g_hist, r_hist):
+    def PlotHist(self, b_hist, g_hist, r_hist, save_path):
         plt.plot(b_hist, label='B', color='blue')
         plt.plot(g_hist, label='G', color='green')
         plt.plot(r_hist, label='R', color='red')
         plt.legend(loc='best')
         plt.xlim([0, 256])
-        plt.savefig("Hist_Plate2.png")
-        
-if __name__ == "__main__":
-    cc = ColorCounter('/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/imgs', '/data/pancy/iThor/single_obj/data_FloorPlan2_Plate/masks')
-    # cc = ColorCounter('/home/pancy/IP/ithor/DataGen/data_FloorPlan3_Plate/imgs', '/home/pancy/IP/ithor/DataGen/data_FloorPlan3_Plate/masks')
+        plt.savefig(save_path)

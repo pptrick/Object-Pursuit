@@ -135,20 +135,13 @@ nohup.out
 xorg.log*
 
 # checkpoints
-/Segmentation/checkpoints*
-/Segmentation/*.pth
-/Segmentation/runs
-/Segmentation/Bases
-/Segmentation/pretrained
+checkpoints*
+*.pth
+runs
+Bases
+pretrained
 
 # bash
 *.sh
 /run
 *.out
-
-# data
-/BaseAnalyze/Bases
-/BaseAnalyze/Vec
-/BaseAnalyze/Target
-/Segmentation/Bases*
-/Segmentation/zs*

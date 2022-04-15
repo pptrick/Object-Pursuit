@@ -51,7 +51,7 @@ def genBases(checkpoint_path, output_dir, device=torch.device('cpu'), extension=
         return base_num
     
 if __name__ == '__main__':
-    if genBases("../checkpoints_conv_hypernet/checkpoint.pth", "./Bases/"):
+    if genBases("../checkpoints/checkpoint.pth", "./Bases/"):
         print("gen Bases success !")
     else:
         print("gen Bases fail !")
