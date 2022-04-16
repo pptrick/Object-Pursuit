@@ -1,7 +1,7 @@
 # readme for `coeffnet`
-We define the hypernetwork, the primary network (deeplab segmentation blocks) and the latent vector z in this directory. The overall architecture can be represented by the following figure:
+We define the hypernetwork, the primary network (deeplab segmentation blocks), and the latent vector z in this directory. The overall architecture can be represented by the following figure:
 
- <img src="architecture.png">
+ <img src="../../img/architecture.png">
 
 ## hypernet
 
@@ -10,19 +10,19 @@ The hypernet model is defined in `hypernet.py`. `class Hypernet(nn.Module)` is t
 The hyper-block is defined in `hypernet_block.py`.  `HypernetFCBlock` is the fully-connected hyper-block, which is no longer used anymore. `HypernetConvBlock` is the convolutional hyper-block we currently use.
 
 ## primary network(deeplab segmentation network)
-The primary network, or segmentation network, is defined in `deeplab_block` directory, each file defines an independent part in deeplabv3+. However, these blocks are actually functions instead of network module, taking the training data and **network weights** as input. We implement both the function version and the network version of the backbone (resnet18).
+The primary network, or segmentation network, is defined in `deeplab_block` directory; each file defines an independent part in deeplabv3+. However, these blocks are actually functions instead of network modules, taking the training data and **network weights** as input. We implement both the function version and the network version of the backbone (resnet18).
 
 ## overall structure
-In *Object Pursuit* and other applications, we need to learn a latent vector z for novel object representation or optimize combination coefficients of the bases for object expression.  The latent vector z is the input of the hypernetwork, and it could be implemented as optimizable parameters, so does the coefficients.  For convenience, we design top-level models that help manage hypernetwork, primary network and latent codes. These models are defined in `coeffnet.py` and `coeffnet_simple.py`. Both of these files define `Singlenet` and `Coeffnet`, the former contains and optimizes the latent code z, the latter contains and optimizes the coefficients. Both of them take color images as input and output segmentation masks. The difference between these two files is that the models defined in `coeffnet_simple.py` contain parameters of z/coeff only, and the hypernet/backbone should be instantiate somewhere outside, while  the models defined in `coeffnet.py`  contain parameters of z/coeff, the hypernet and the backbone. The `coeffnet.py` is usually used in one-shot applications while the `coeffnet_simple.py` is used in *Object Pursuit* for decoupling.
+In *Object Pursuit* and other applications, we need to learn a latent vector z for novel object representation or optimize combination coefficients of the bases for object expression.  The latent vector z is the input of the hypernetwork, and it could be implemented as optimizable parameters, and so does the coefficients.  For convenience, we design top-level models that help manage hypernetwork, primary network, and latent codes. These models are defined in `coeffnet.py` and `coeffnet_simple.py`. Both of these files define `Singlenet` and `Coeffnet`; the former contains and optimizes the latent code z, and the latter contains and optimizes the coefficients. Both of them take color images as input and output segmentation masks. The difference between these two files is that the models defined in `coeffnet_simple.py` contain parameters of z/coeff only, and the hypernet/backbone should be instantiated somewhere outside, while  the models defined in `coeffnet.py`  contain parameters of z/coeff, the hypernet, and the backbone. The `coeffnet.py` is usually used in one-shot applications, while the `coeffnet_simple.py` is used in *Object Pursuit* for decoupling.
 
-For pretrained models loading (take `coeffnet.py` as example):
+For pretrained models loading:
 
-- load pretrained z: For `Singlenet`, it is likely for you to initialize its z with pretrained z. You may use `load_z()` to load z from a `Singlenet` parameter file (.pth) or a z file (.json)
-- load pretrained bases: For `Coeffnet`, it is likely for you to load pretrained bases for linear combination. You could pass the directory of bases (a dir contains several z file) to the `base_dir` param when constructing the `Coeffnet`
-- load pretrained hypernet: use `init_hypernet()`, pass the path of the pretrained model (.pth) to `hypernet_path`. (Both top-level model and hypernetwork are accepted)
-- load pretrained backbone: please be careful, if `use_backbone` is set to False, the backbone won't be defined as a network, but as a function that takes weights generated the hypernet.  if `use_backbone` is set to True, use `init_backbone` to load a pretrained backbone.
+- Load pretrained z: For `Singlenet`, it is likely for you to initialize its z with pretrained z. You may use `load_z()` to load z from a `Singlenet` parameter file (.pth) or a z file (.json)
+- Load pretrained bases: For `Coeffnet`, it is likely for you to load pretrained bases for linear combinations. You could pass the directory of bases (a dir contains several z file) to the `base_dir` param when constructing the `Coeffnet`
+- Load pretrained hypernet: use `init_hypernet()`, pass the path of the pretrained model (.pth) to `hypernet_path`. (Both top-level model and hypernetwork are accepted)
+- Load pretrained backbone: please be careful, if `use_backbone` is set to False, the backbone won't be defined as a network, but as a function that takes weights generated by the hypernet.  if `use_backbone` is set to True, use `init_backbone` to load a pretrained backbone.
 
-> Please avoid using `torch.load` to load pretrained models directly. Due to the diversity of network implementation, we have made our loading method compatible to all forms of network we defined.
+> Please avoid using `torch.load` to load pretrained models directly. Due to the diversity of network implementation, we have made our loading method compatible to all forms of the network we defined.
 
 Also, you may find `Multinet` for joint training in `pretrain/_model.py` .
 

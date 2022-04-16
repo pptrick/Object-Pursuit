@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument('-dataset', '--dataset', dest='dataset', type=str, default="CO3D", choices=["iThor", "CO3D", "DAVIS"],
                         help='select dataset')
     parser.add_argument('-thres', '--thres', dest='thres', type=float, default=0.6,
-                        help='pursuit threshold (of whether an object can be expressed)')
+                        help='pursuit quality measure threshold (of whether an object can be expressed)')
     parser.add_argument('-use_backbone', '--use_backbone', dest='use_backbone', action="store_true",
                         help='if true, the weights of the backbone will not be predicted by the hypernet')
     parser.add_argument('-save_interval', '--save_interval', dest='save_interval', type=int, default=0,
