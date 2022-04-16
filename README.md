@@ -33,7 +33,7 @@ cd Object-Pursuit
 - Pytorch >= 1.6 (torch, torchvision)
 - conda virtual environment is recommended, but optional
 
-**dataset **(optional)
+**dataset**(optional)
 
 - iThor synthetic dataset: we collect synthetic data within the [iThor](https://ai2thor.allenai.org/ithor) environment, simulating a robot agent exploring the scene. The data collection code can be found in `data_collector`. Please organize your data into the following structure:
 
