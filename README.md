@@ -2,8 +2,6 @@
 <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-v1.7.1-red.svg?logo=PyTorch&style=for-the-badge" /></a> <a href="#"><img src="https://img.shields.io/badge/python-v3.7+-blue.svg?logo=python&style=for-the-badge" /></a>
  <img src="img/demo.png" style="zoom:100%">
 
-[toc]
-
 ## Introduction
 
 This is the official Pytorch implementation of **Object Pursuit**, proposed in the paper [Object Pursuit: Building a Space of Objects via Discriminative Weight Generation](https://arxiv.org/pdf/2112.07954.pdf).
