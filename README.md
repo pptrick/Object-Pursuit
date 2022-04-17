@@ -96,7 +96,7 @@ python main.py --dataset iThor --data <synthetic data root> --zs None --bases No
 python main.py --dataset DAVIS --data <DAVIS root> --zs None --bases None --backbone None --hypernet None --use_backbone
 ```
 
-object pursuit based on pretrained hypernet and backbone:
+Run object pursuit based on pretrained hypernet and backbone:
 
 ```bash
 # DAVIS dataset
@@ -135,19 +135,26 @@ To run and evaluate one-shot learning:
 
 ```bash
 # DAVIS dataset
-python one-shot.py --model coeffnet --dataset DAVIS --imgs <path to imgs> --masks <path to masks> --bases <path to bases> --backbone <path to backbone> --hypernet <path to hypernet> --use_backbone
+python one-shot.py --model coeffnet --dataset DAVIS --n 1 --imgs <path to imgs> --masks <path to masks> --bases <path to bases> --backbone <path to backbone> --hypernet <path to hypernet> --use_backbone
 ```
 
 - To view visualization results, use `--save_viz` flag.
 
-We'll release the download link of the pretrained bases, backbone, and hypernet later.
+**Quick Demo**
+
+Here's a sample model file that contains parameters of the hypernet, the backbone, and the bases. [Download](https://drive.google.com/file/d/1B2-WxgIjE-7mQJkro8uOP8OYXUj0V-se/view?usp=sharing) it, and set its path to `<model dir>/multinet_vos_davis.pth`. Suppose you have downloaded [DAVIS 2016 dataset](https://davischallenge.org/davis2016/code.html) and set the data directory to `<DAVIS root>`, then you can run one-shot learning:
+
+```bash
+python one-shot.py --model coeffnet --dataset DAVIS --n 1 --z_dim 100 --imgs <DAVIS root>/JPEGImages/480p/<object> --masks <DAVIS root>/Annotations/480p/<object> --bases <model dir>/multinet_vos_davis.pth --backbone <model dir>/multinet_vos_davis.pth --hypernet <model dir>/multinet_vos_davis.pth --use_backbone
+```
+
+Change the content within a `<>`.
 
 ## Citation
 
 If you find our work useful to your research, please consider citing:
 
 ```latex
-% todo: change this with formal ICLR citing
 @article{pan2021object,
   title={Object Pursuit: Building a Space of Objects via Discriminative Weight Generation},
   author={Pan, Chuanyu and Yang, Yanchao and Mo, Kaichun and Duan, Yueqi and Guibas, Leonidas},
